@@ -12,7 +12,7 @@ First consume the `git-workflow`, `characterization-testing`, and `testing` skil
 ## Inputs
 
 - `.runtime/<ticket>/analysis.md` and `.runtime/<ticket>/design.md`, plus ticket context from the orchestrator.
-- The current branch must be a dedicated ticket branch (e.g. `feature/<ticket-id>`). If not, stop and report instead of switching branches yourself.
+- The current branch must be the ticket branch recorded in `state.json`, and not a protected branch per `git-workflow`. If not, stop and report instead of switching branches yourself.
 
 ## Rules
 

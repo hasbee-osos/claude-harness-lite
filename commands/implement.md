@@ -9,7 +9,7 @@ allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash
 Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, infer from the most recent `.runtime/*/` directory.
 
 1. Require `.runtime/<ticket-id>/analysis.md` and `.runtime/<ticket-id>/design.md`. If missing, tell the user to run `/analyze` and `/design` first.
-2. Confirm the current branch is a dedicated ticket branch (e.g. `feature/<ticket-id>`), not a protected branch. If not, stop and ask the human — do not switch branches automatically when work could be lost.
+2. Confirm the current branch is the ticket branch recorded in `state.json`, and that it is not a protected branch per the `git-workflow` skill. If not, stop and ask the human — do not switch branches automatically when work could be lost.
 3. Dispatch the `engineering-harness:implementor` subagent with the ticket, both artifacts, and `iteration: 1` (or the current iteration from `state.json`).
 4. Write the returned report to `.runtime/<ticket-id>/implementation-report.md` and update `state.json` (`implementation: COMPLETE`, `status`).
 5. Summarize: what changed, tests executed with actual evidence, deviations from the design, and any findings.
