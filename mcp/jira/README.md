@@ -18,12 +18,16 @@ The harness expects a **read-only** Jira MCP server configured by the user or th
 
 Use Atlassian's official Rovo MCP Server (OAuth 2.1 — no token stored locally; it acts with **your** Jira identity and permissions).
 
-1. Register it once for your user, from any terminal:
+1. Register it once for your user:
    ```bash
    claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com/v2/mcp
    ```
-   (`--scope local` instead limits it to the current project; avoid `--scope project` unless the team agrees to share the entry via `.mcp.json`.)
-2. Start Claude Code in the product repo, run `/mcp`, select `atlassian`, and complete the browser login, choosing the `gearsjira` site.
+   **Which directory:** with `--scope user`, any directory works. The entry is saved in your `~/.claude.json` and applies to every folder you start Claude in (a single repo, the parent folder of all clones, or anywhere else). This is the recommended scope.
+
+   Other scopes depend on the directory you run the command in:
+   - `--scope local` saves the entry only for **that exact folder**, privately in `~/.claude.json`. Run it in the folder you start Claude in. It won't be available if you start Claude in a different folder, e.g. one repo instead of the parent folder.
+   - `--scope project` writes a `.mcp.json` **into that folder**, shared with everyone who opens it. Use it only if the team agrees to share the entry via version control.
+2. Start Claude Code (e.g. in the workspace folder), run `/mcp`, select `atlassian`, and complete the browser login, choosing the `gearsjira` site.
 3. If the connection is refused, your Atlassian organization admin may need to allow the Rovo MCP Server for the site.
 
 The server exposes write tools (create/edit/comment/transition) by default. This plugin needs **read-only** access, so write tools must be blocked on the Claude Code side — see the read-only guard below.

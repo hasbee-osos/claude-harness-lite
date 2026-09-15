@@ -4,16 +4,31 @@ Ticket: <ticket-id>
 
 ## Repositories
 
-- <repositories/modules affected>
+| Repo | Role | Summary |
+|---|---|---|
+| <repo-folder> | change \| context | <what changes there, or why it is read> |
 
-## Files / Modules
+Corrections to the analysis's repo list: <or "None.">
 
-- <classes, components, config, DB objects, APIs>
+## Cross-Repo Contracts
+
+- <endpoint / DTO field / error code / shared DB object that both sides must agree on, or "None — single repo.">
+- Ordering: <e.g. backend must reach base-qa together with or before the UI; or "None.">
 
 ## Change
 
+### <repo-folder>
+
+Files / modules:
+- <classes, components, config, DB objects, APIs>
+
+Steps:
 1. <step>
 2. <step>
+
+### <repo-folder>
+
+…
 
 ## Regression Surface
 
@@ -24,7 +39,7 @@ Indirect:
 - <what else could be affected>
 
 Dependent:
-- <callers/consumers/APIs/DB/UI flows relying on the behavior>
+- <callers/consumers/APIs/DB/UI flows relying on the behavior, including other repos>
 
 Existing behavior to preserve:
 - <unchanged behavior>
@@ -37,7 +52,11 @@ High-risk paths:
 
 ## Tests
 
-- <risk-based verification plan: which levels, which suites, and why>
+### <repo-folder>
+- <risk-based verification plan: which levels, which suites, which command, and why>
+
+### Cross-repo
+- <how the contract is verified, e.g. API test against the changed endpoint matching the UI's expectations; or "Not needed.">
 
 ## Risk
 

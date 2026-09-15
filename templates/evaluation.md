@@ -7,9 +7,14 @@ Iteration: <n>
 
 PASS | FAIL | INSUFFICIENT_EVIDENCE
 
+| Repo | Result | Note |
+|---|---|---|
+| <repo-folder> | PASS \| FAIL \| INSUFFICIENT_EVIDENCE | <one line> |
+| Cross-repo consistency | PASS \| FAIL \| N/A | <one line> |
+
 ## Blocking Findings
 
-- <material problems that must be fixed; "None." if empty>
+- <[repo] material problems that must be fixed; "None." if empty>
 
 ## Non-Blocking Findings
 

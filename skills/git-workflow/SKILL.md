@@ -12,7 +12,9 @@ This skill is the single source of truth for how agents branch, resolve conflict
 
 If this skill and reality disagree, stop and ask the human.
 
-**Inspect the current repository state before acting** (`git status`, `git branch --show-current`, `git fetch`).
+**Inspect the current repository state before acting** (`git -C <repo> status`, `git -C <repo> branch --show-current`, `git -C <repo> fetch`).
+
+Every product repo (all services and the UI) follows this strategy. When a ticket changes several repos (see `workspace`), the flow, branch name, source branch and PR targets are the **same in every changed repo**; branches, resolve branches and PRs are created per repo.
 
 ## Branch map
 
@@ -85,7 +87,8 @@ Branches exist but there is no recent activity. Do not assume a flow; ask the hu
 
 - Propose exactly one flow (A or B) from the Jira context with a one-line reason, the full branch name, and the PR targets per stage. Hotfix, OSOS, and dormant-line tickets → escalate.
 - **The human must confirm the flow, branch name, and PR targets before any branch is created.** If context is ambiguous, stop and ask.
-- Record `flow`, `source_branch`, `branch`, `pr_targets` (grouped by stage, with each stage's status) in `.runtime/<ticket-id>/state.json`.
+- Record `flow`, `source_branch`, `branch`, `pr_targets` (grouped by stage, with each stage's status) in `.runtime/<ticket-id>/state.json` (schema in `workspace`).
+- A stage is done only when its PRs are merged and verified in **every** changed repo.
 
 ## Branch naming
 
@@ -116,12 +119,12 @@ Agents raise **dev-stage PRs only**: ticket (or resolve) branch → `base-sandbo
 - **Never merge the target branch into the ticket branch.** That drags unverified sandbox work into a branch that later goes to `base-development`.
 - Use a **resolve branch**: cut it from the PR target, merge the ticket branch into it, resolve following the agent-owned rules above, and raise that target's PR from the resolve branch. The ticket branch stays unchanged; other targets keep using it.
 - Name: `<ticket-branch>-<target-branch>-conflict-resolved` — e.g. `base/bugfix/GSIS-23735-course-reg-submit-npe-gcet-sandbox-qa-conflict-resolved`. Keep the ticket branch's `base/…` prefix (CI validation allows `base/*/*` into customer sandboxes).
-- Record each resolve branch against its target in `state.json`, and state in the PR description which ticket branch it resolves.
+- Record each resolve branch against its repo and target in `state.json`, and state in the PR description which ticket branch it resolves.
 
 ## Safety rules
 
 - Before modifying files, confirm the working tree is clean of unrelated changes. Never overwrite, stash, or discard user changes without their direction.
 - Commit discipline: small, focused, Jira-key-referencing commits; no secrets; no unrelated files.
-- Inspect the final diff (`git diff`, `git diff --staged`) before finishing; ensure the change is scoped to the ticket.
+- Inspect the final diff of each changed repo (`git -C <repo> diff`, `git -C <repo> diff --staged`) before finishing; ensure the change is scoped to the ticket.
 - **Never**: force-push, auto-merge, bypass CI/checks, approve your own PR, rewrite history on shared branches, commit to protected branches.
 - Destructive operations (`reset --hard`, `clean -f`, `branch -D`, `push --force`) require explicit human authorization.

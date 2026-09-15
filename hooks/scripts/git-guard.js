@@ -4,7 +4,10 @@
  *
  * Blocks:
  *  1. Force pushes and other destructive git operations.
- *  2. Commits/pushes/branch mutation while on a protected branch.
+ *  2. Commits/pushes/merges while on a protected branch, and pushes whose destination is a
+ *     protected branch. The branch is checked in the repo each git command actually targets
+ *     (session cwd, `cd`/`Set-Location`/`pushd`, `git -C`), so it works from a multi-repo
+ *     workspace. Write commands whose target repo cannot be determined are denied.
  *  3. Any GitHub CLI (gh) command outside a read-only + PR-create allowlist.
  *
  * Input:  JSON on stdin (Claude Code hook payload).
@@ -16,6 +19,8 @@ const ALLOW_MESSAGE =
 
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
+const { execFileSync } = require("child_process");
 
 const STRATEGY_FILE = path.join(__dirname, "..", "..", "skills", "git-workflow", "SKILL.md");
 
@@ -36,15 +41,19 @@ function loadProtected() {
 }
 
 const DESTRUCTIVE = [
-  /\bgit\s+push\b[^|;&]*\s(--force|--force-with-lease)\b/,
-  /\bgit\s+push\b[^|;&]*\s(-f)\b/,
-  /\bgit\s+reset\s+--hard\b/,
-  /\bgit\s+clean\s+(-[a-zA-Z]*f|--force)/,
-  /\bgit\s+checkout\s+[^|;&]*--\s+\./,
-  /\bgit\s+branch\s+-[a-zA-Z]*D/,
-  /\bgit\s+filter-branch\b/,
-  /\bgit\s+rebase\b[^|;&]*--onto\s+(main|master|develop)\b/
+  /\bgit\b[^|;&\n]*\spush\b[^|;&\n]*\s(--force|--force-with-lease|--force-if-includes)\b/,
+  /\bgit\b[^|;&\n]*\spush\b[^|;&\n]*\s-[a-zA-Z]*f\b/,
+  /\bgit\b[^|;&\n]*\sreset\s+--hard\b/,
+  /\bgit\b[^|;&\n]*\sclean\s+(-[a-zA-Z]*f|--force)/,
+  /\bgit\b[^|;&\n]*\scheckout\s+[^|;&\n]*--\s+\./,
+  /\bgit\b[^|;&\n]*\sbranch\s+-[a-zA-Z]*D/,
+  /\bgit\b[^|;&\n]*\sfilter-branch\b/,
+  /\bgit\b[^|;&\n]*\srebase\b[^|;&\n]*--onto\s+(main|master|develop)\b/
 ];
+
+// git subcommands that create commits on, or publish, a branch.
+const WRITE_SUBCOMMANDS = new Set(["commit", "push", "merge", "rebase", "am", "cherry-pick", "revert"]);
+const WRITE_TEXT = /\bgit(?:\.exe)?\b[^\n;&|]*?\s(commit|push|merge|rebase|am|cherry-pick|revert)\b/g;
 
 // gh runs with the human's full GitHub permissions, so allow only reads and opening PRs.
 const GH_ALLOWED = {
@@ -88,11 +97,135 @@ function deny(reason) {
   process.exit(0);
 }
 
-function currentBranch() {
+// --- Minimal shell parsing: words and control operators, quotes respected. ---
+
+function tokenize(cmd) {
+  const tokens = [];
+  let word = null; // { value, dynamic }
+  let quote = null;
+  const flush = () => {
+    if (word) tokens.push({ type: "word", value: word.value, dynamic: word.dynamic });
+    word = null;
+  };
+  const add = (ch, dynamic) => {
+    word = word || { value: "", dynamic: false };
+    word.value += ch;
+    if (dynamic) word.dynamic = true;
+  };
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+      else add(ch, quote === '"' && (ch === "$" || ch === "`"));
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      word = word || { value: "", dynamic: false };
+      continue;
+    }
+    if (/\s/.test(ch) && ch !== "\n") {
+      flush();
+      continue;
+    }
+    const two = cmd.slice(i, i + 2);
+    if (two === "&&" || two === "||") {
+      flush();
+      tokens.push({ type: "op", value: two });
+      i++;
+      continue;
+    }
+    if (";|&\n()".includes(ch)) {
+      flush();
+      tokens.push({ type: "op", value: ch });
+      continue;
+    }
+    add(ch, ch === "$" || ch === "`" || ch === "%");
+  }
+  flush();
+  return tokens;
+}
+
+const UNKNOWN = null;
+
+function resolveDir(base, word) {
+  if (base === UNKNOWN || !word || word.dynamic || word.value === "-") return UNKNOWN;
+  let p = word.value;
+  const drive = p.match(/^\/([a-zA-Z])(\/|$)/); // Git Bash style /c/...
+  if (drive && process.platform === "win32") p = drive[1] + ":/" + p.slice(3);
+  if (p === "~" || p.startsWith("~/") || p.startsWith("~\\")) p = path.join(os.homedir(), p.slice(1));
+  return path.resolve(base, p);
+}
+
+const CD = new Set(["cd", "chdir", "set-location", "sl", "pushd", "push-location"]);
+const POP = new Set(["popd", "pop-location"]);
+
+// Returns every git write command with the directory it runs in (UNKNOWN if undeterminable).
+function gitWrites(cmd, startDir) {
+  const writes = [];
+  let cwd = startDir;
+  const subshells = [];
+  const pushed = [];
+  let seg = [];
+
+  const run = (words) => {
+    let i = 0;
+    while (i < words.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[i].value)) i++;
+    if (i >= words.length) return;
+    const name = words[i].value.toLowerCase().replace(/\.exe$/, "");
+    const args = words.slice(i + 1);
+
+    if (CD.has(name)) {
+      const named = args.findIndex((w) => /^-(literal)?path$/i.test(w.value));
+      const target = named >= 0 ? args[named + 1] : args.find((w) => !w.value.startsWith("-"));
+      if (name === "pushd" || name === "push-location") pushed.push(cwd);
+      cwd = target ? resolveDir(cwd, target) : cwd === UNKNOWN ? UNKNOWN : os.homedir();
+      return;
+    }
+    if (POP.has(name)) {
+      cwd = pushed.length ? pushed.pop() : UNKNOWN;
+      return;
+    }
+    if (name !== "git") return;
+
+    let dir = cwd;
+    let j = 0;
+    while (j < args.length && args[j].value.startsWith("-")) {
+      const opt = args[j].value;
+      if (opt === "-C") {
+        dir = resolveDir(dir, args[j + 1]);
+        j += 2;
+      } else if (opt === "-c") {
+        j += 2;
+      } else if (/^--(git-dir|work-tree|namespace)/.test(opt)) {
+        dir = UNKNOWN;
+        j += opt.includes("=") ? 1 : 2;
+      } else {
+        j++;
+      }
+    }
+    const sub = args[j] && args[j].value;
+    if (WRITE_SUBCOMMANDS.has(sub)) writes.push({ sub, dir, args: args.slice(j + 1) });
+  };
+
+  for (const t of tokenize(cmd)) {
+    if (t.type === "word") {
+      seg.push(t);
+      continue;
+    }
+    run(seg);
+    seg = [];
+    if (t.value === "(") subshells.push(cwd);
+    if (t.value === ")") cwd = subshells.length ? subshells.pop() : UNKNOWN;
+  }
+  run(seg);
+  return writes;
+}
+
+function currentBranch(dir) {
   try {
-    const { execSync } = require("child_process");
     // `branch --show-current` (unlike rev-parse) also works on unborn branches.
-    return execSync("git branch --show-current", {
+    return execFileSync("git", ["-C", dir, "branch", "--show-current"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
     }).trim();
@@ -105,13 +238,34 @@ function isProtected(branch, rules) {
   return Boolean(branch) && rules.some((re) => re.test(branch));
 }
 
+// Destination branches named explicitly on a push command line.
+const PUSH_OPTS_WITH_VALUE = new Set(["--repo", "-o", "--push-option", "--receive-pack", "--exec"]);
+function pushDestinations(args) {
+  const positional = [];
+  const flags = [];
+  for (let i = 0; i < args.length; i++) {
+    const v = args[i].value;
+    if (PUSH_OPTS_WITH_VALUE.has(v)) i++;
+    else if (v.startsWith("-")) flags.push(v);
+    else positional.push(v);
+  }
+  const refspecs = positional.slice(1);
+  return {
+    all: flags.some((f) => ["--all", "--mirror", "--branches"].includes(f)),
+    forced: refspecs.some((r) => r.startsWith("+")),
+    destinations: refspecs.map((r) => r.replace(/^\+/, "").split(":").pop().replace(/^refs\/heads\//, ""))
+  };
+}
+
 let raw = "";
 process.stdin.on("data", (c) => (raw += c));
 process.stdin.on("end", () => {
   let cmd = "";
+  let startDir = process.cwd();
   try {
     const payload = JSON.parse(raw);
     cmd = String((payload.tool_input && payload.tool_input.command) || "");
+    if (payload.cwd) startDir = payload.cwd;
   } catch {
     process.exit(0);
   }
@@ -131,22 +285,40 @@ process.stdin.on("end", () => {
     }
   }
 
-  if (/\bgit\s+(commit|push|merge|rebase|am)\b/.test(cmd)) {
-    const rules = loadProtected();
-    if (!rules) {
-      deny(
-        "Cannot read the protected-branches block from " + STRATEGY_FILE + "; refusing `" + cmd.trim() + "` until it is fixed."
-      );
+  const writes = gitWrites(cmd, startDir);
+  const mentioned = (cmd.match(WRITE_TEXT) || []).length;
+  if (writes.length === 0 && mentioned === 0) process.exit(0);
+
+  if (mentioned > writes.length) {
+    deny(
+      "Cannot determine the repository for every git write command in `" + cmd.trim() + "`. Run each git command on its own as `git -C <literal repo path> …` (not inside `bash -c`, subshells, or quoted text)."
+    );
+  }
+
+  const rules = loadProtected();
+  if (!rules) {
+    deny("Cannot read the protected-branches block from " + STRATEGY_FILE + "; refusing `" + cmd.trim() + "` until it is fixed.");
+  }
+
+  for (const w of writes) {
+    if (w.dir === UNKNOWN) {
+      deny("Cannot determine which repository `git " + w.sub + "` runs in. Use `git -C <literal repo path> " + w.sub + " …`.");
     }
-    const branch = currentBranch();
+    const branch = currentBranch(w.dir);
+    if (branch === null) {
+      deny("`git " + w.sub + "` would run in `" + w.dir + "`, which is not a git repository. Use `git -C <repo> " + w.sub + " …`.");
+    }
     if (isProtected(branch, rules)) {
       deny(
-        "Refusing to run `" +
-          cmd.trim() +
-          "` on protected branch `" +
-          branch +
-          "`. Create a ticket branch per the git-workflow skill first."
+        "Refusing `git " + w.sub + "` in `" + w.dir + "` on protected branch `" + branch + "`. Create a ticket branch per the git-workflow skill first."
       );
+    }
+    if (w.sub === "push") {
+      const p = pushDestinations(w.args);
+      if (p.all) deny("Refusing to push all branches from `" + w.dir + "`; push the ticket branch explicitly.");
+      if (p.forced) deny("Refusing forced refspec push (`+`) from `" + w.dir + "`.");
+      const hit = p.destinations.find((d) => isProtected(d, rules));
+      if (hit) deny("Refusing to push to protected branch `" + hit + "` from `" + w.dir + "`. Push only the ticket branch.");
     }
   }
 

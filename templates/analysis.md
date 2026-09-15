@@ -14,6 +14,14 @@ Ticket: <ticket-id>
 
 <actual behavior>
 
+## Repositories
+
+| Repo | Role | Why (evidence) |
+|---|---|---|
+| <repo-folder> | change \| context | <e.g. component calls `/api/x`; defect in `XService`> |
+
+Flow: <e.g. frontend `x.component.ts` → `GET /api/x` → admin-backend `XController` → `XService` → `x_table`>
+
 ## Root Cause
 
 <likely root cause + mechanism>
@@ -28,7 +36,7 @@ Ticket: <ticket-id>
 
 ## Evidence
 
-- <file paths, symbols, tests that support the conclusions>
+- <`<repo>/<path>`, symbols, tests that support the conclusions (as of `origin/<source_branch>`)>
 
 ## Open Questions
 
