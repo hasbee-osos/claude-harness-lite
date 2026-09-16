@@ -58,4 +58,4 @@ Recordings show real names, email addresses, student records and other people's 
 
 ## When it cannot be done
 
-If listing, downloading or frame extraction fails, carry on with the analysis. Put the failure under **Attachments** in `analysis.md`: which file, what failed, and the exact error. When the root cause depends on what a recording would show, raise it as an Open Question. Never describe an attachment you did not read.
+If listing, downloading or frame extraction fails, carry on with the analysis. Put the failure under **Attachments** in `analysis.md`: which file, what failed, and the exact error. When the root cause or a requirement depends on what a recording would show, raise it as an Open Question. Never describe an attachment you did not read.

@@ -16,7 +16,7 @@ Use this skill in legacy/low-coverage areas. Do not attempt to retrofit the enti
 3. Identify important existing behavior that must be preserved.
 4. Capture that behavior with focused tests where practical (pin current behavior, including quirks you must not change).
 5. Implement the smallest safe change.
-6. Add the regression test for the bug itself.
+6. Add the test that proves the ticket: the regression test for a bug, or the tests for each acceptance criterion of a feature.
 7. Verify surrounding behavior using the captured tests.
 8. Stop. Do not inflate the test suite beyond the risk.
 
@@ -28,4 +28,4 @@ Service behavior, API responses, validation rules, database interactions, calcul
 
 - Characterization tests document current behavior; mark clearly (naming/comments) that they pin existing behavior.
 - If a characterization test fails after your change, either your change broke preserved behavior or the test captured behavior the ticket explicitly changes — decide deliberately and document which.
-- Every bug fix should, where practical, leave the codebase with a stronger regression safety net than before.
+- Every change — bug fix or feature — should, where practical, leave the codebase with a stronger regression safety net than before.

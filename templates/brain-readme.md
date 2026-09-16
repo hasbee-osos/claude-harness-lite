@@ -24,7 +24,7 @@ It is cloned into each developer's workspace as `sis-brain`, beside their produc
 
 ## How to use it
 
-- **Reopened bug?** Read `tickets/<TICKET-ID>/decisions.md` first. It says why the fix was built the way it was, which alternatives were rejected, and on what evidence.
+- **Reopened bug, or extending a delivered story?** Read `tickets/<TICKET-ID>/decisions.md` first. It says why the change was built the way it was, which alternatives were rejected, and on what evidence.
 - **Picking up someone's half-finished ticket?** Run `/brain <TICKET-ID>` in a Claude session started in this workspace, or just read `state.json` — `next_action` says what happens next in plain words.
 - **Listing recent work?** `/brain` with no argument, or `tail index.jsonl`.
 
@@ -45,4 +45,4 @@ It is cloned into each developer's workspace as `sis-brain`, beside their produc
 
 ## Deleting things
 
-Safe to delete a whole `tickets/<TICKET-ID>/` folder once the ticket is closed and you no longer want the history — but that is exactly the history that stops a reopened bug being re-debugged from scratch. Prefer to keep it.
+Safe to delete a whole `tickets/<TICKET-ID>/` folder once the ticket is closed and you no longer want the history — but that is exactly the history that stops a reopened ticket being re-investigated from scratch. Prefer to keep it.
