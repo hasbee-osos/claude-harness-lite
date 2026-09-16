@@ -1,18 +1,18 @@
 ---
 name: brain
-description: The brain - the team's shared git repo, cloned into the workspace as .brain, holding the durable per-ticket record of every harness run (state, append-only journal, locked decisions with justification, versioned artifacts, metrics), how to sync it, how to resume a ticket in a new session, and what must never be written there. Read before any harness command or agent acts.
+description: The brain - the team's shared git repo, cloned into the workspace as sis-brain, holding the durable per-ticket record of every harness run (state, append-only journal, locked decisions with justification, versioned artifacts, metrics), how to sync it, how to resume a ticket in a new session, and what must never be written there. Read before any harness command or agent acts.
 ---
 
 # The Brain
 
-The **brain** is the team's shared record: a git repo cloned into the workspace as `.brain`, with one folder per ticket recording what the harness did, what it decided, and why. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
+The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, and why. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
 
 It replaces the old `.runtime/` folder. That folder was declared temporary scratch, so iteration history was overwritten and the reasoning behind a fix was lost when the session ended. **If a ticket is reopened, the brain is the answer to "why was it done this way?".**
 
 ## Layout
 
 ```text
-<workspace>/.brain/            ← a clone of the team's brain repo
+<workspace>/sis-brain/            ← a clone of the team's brain repo
 ├── .harness-brain             ← marker; git-guard allows commits and pushes here
 ├── .gitignore                 ← metrics/ , current.json
 ├── .gitattributes             ← *.jsonl merge=union
@@ -35,19 +35,20 @@ It replaces the old `.runtime/` folder. That folder was declared temporary scrat
     └── metrics.json           ← per-ticket rollup
 ```
 
-- **The brain is its own git repo**, shared by the team and cloned into the workspace as `.brain`. The workspace folder around it is a plain container and is never version-controlled.
-- **Never inside a product repo.** The brain sits at the workspace root, beside the repo clones. If `.brain` is missing or is not a git repo, say so and ask the human to clone it — do not silently start a local-only brain.
+- **The brain is its own git repo**, shared by the team and cloned into the workspace as `sis-brain`. The workspace folder around it is a plain container and is never version-controlled.
+- **Never inside a product repo.** The brain sits at the workspace root, beside the repo clones. If `sis-brain` is missing or is not a git repo, say so and ask the human to clone it — do not silently start a local-only brain.
 - **Iteration artifacts are numbered, never overwritten.** `evaluation-1.md` survives iteration 2. `state.json` `artifacts` records the latest of each.
+- **Keep the brain out of code searches.** The workspace needs a `.ignore` file at its root containing `sis-brain/`. ripgrep honours `.ignore`, so cross-repo code searches stop returning harness records as matches — analyses and decisions quote class names and file paths, and after a few dozen tickets they would drown the real code. `Grep` with an explicit path into the brain still works, so searching the record is unaffected. Create the file on first use if it is missing, or append the line if it exists without it. It sits in the workspace, which is not a git repo, so there is nothing to commit.
 - On first use, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore` (`metrics/`, `current.json`) and `.gitattributes` (`*.jsonl merge=union`) — and commit them.
 
 ## Syncing
 
-The brain is shared, so every session keeps it current. All of this runs as `git -C <workspace>/.brain …`.
+The brain is shared, so every session keeps it current. All of this runs as `git -C <workspace>/sis-brain …`.
 
-- **Pull before reading.** `git -C .brain pull --rebase` when a ticket starts or resumes, so you see what colleagues have recorded.
+- **Pull before reading.** `git -C sis-brain pull --rebase` when a ticket starts or resumes, so you see what colleagues have recorded.
 - **Commit and push at every milestone**, not only at the end: analysis written, design and repos confirmed, each branch created, each evaluation verdict, PRs prepared, ticket closed. A session that dies mid-ticket must leave nothing stranded on one machine.
 - **Commit message:** `<TICKET-ID>: <milestone>` — e.g. `GSIS-12345: evaluation 2 - FAIL, 2 blocking`. One ticket per commit; never mix two tickets.
-- **Rejected push?** `git -C .brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
+- **Rejected push?** `git -C sis-brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
 - **Conflicts are rare by design.** Each ticket owns its folder, so two people on two tickets never collide. `index.jsonl` is shared but append-only, and `merge=union` resolves it automatically. A genuine conflict means two sessions worked the same ticket: stop and ask the human which record is right.
 - Everyone commits straight to `main`. The brain is a record, not code — there is no review gate, because a gate would stop it being current.
 - `metrics/` and `current.json` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
@@ -222,4 +223,4 @@ If `state.json` is missing but the folder exists, reconstruct what you can from 
 
 ## Metrics
 
-The telemetry collector (`hooks/scripts/telemetry.js`) writes `.brain/metrics/runs.jsonl`, `.brain/metrics/harness.prom` and each ticket's `metrics.json`. Agents and commands never write those files — they only keep `current.json` accurate. See `docs/telemetry.md`.
+The telemetry collector (`hooks/scripts/telemetry.js`) writes `sis-brain/metrics/runs.jsonl`, `sis-brain/metrics/harness.prom` and each ticket's `metrics.json`. Agents and commands never write those files — they only keep `current.json` accurate. See `docs/telemetry.md`.

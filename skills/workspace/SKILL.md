@@ -11,7 +11,8 @@ The workspace folder itself is **never a git repo** — it is a plain container,
 
 ```text
 <workspace>/                 ← Claude session directory
-├── .brain/                  ← the brain repo (clone; skipped as a product repo)
+├── .ignore                  ← keeps the brain out of default code searches
+├── sis-brain/               ← the brain repo (clone; skipped as a product repo)
 ├── claude_harness_lite/     ← the plugin (not a product repo)
 ├── sis-product-sis-admin-backend/
 ├── sis-product-sis-frontend/
@@ -40,9 +41,9 @@ The workspace folder itself is **never a git repo** — it is a plain container,
 
 ## The brain
 
-Every harness run records its state, decisions and artifacts in `<workspace>/.brain/` — one folder per ticket, durable across sessions. The layout, the `state.json` schema, the journal event vocabulary, the decision-record rules and the resume protocol all live in the **`brain`** skill. Read it before writing anything there.
+Every harness run records its state, decisions and artifacts in `<workspace>/sis-brain/` — one folder per ticket, durable across sessions. The layout, the `state.json` schema, the journal event vocabulary, the decision-record rules and the resume protocol all live in the **`brain`** skill. Read it before writing anything there.
 
 Two things matter here in the workspace:
 
-- The brain is **its own git repo**, cloned into the workspace root as `.brain`, beside the product clones — never inside a product repo. `git -C .brain` writes are allowed by git-guard; product repos are unchanged.
+- The brain is **its own git repo**, cloned into the workspace root as `sis-brain`, beside the product clones — never inside a product repo. `git -C sis-brain` writes are allowed by git-guard; product repos are unchanged.
 - `state.json` `repos` is the list of repos this ticket may change. Every other repo is read-only context.

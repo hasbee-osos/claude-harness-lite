@@ -12,7 +12,7 @@ First consume the `ground-rules`, `workspace`, `brain`, `repository-analysis` an
 
 ## Your task
 
-You receive the analysis artifact (`.brain/tickets/<ticket>/analysis.md`), the decisions locked so far (`.brain/tickets/<ticket>/decisions.md`) and ticket context.
+You receive the analysis artifact (`sis-brain/tickets/<ticket>/analysis.md`), the decisions locked so far (`sis-brain/tickets/<ticket>/decisions.md`) and ticket context.
 
 - **Follow the locked decisions and cite them by ID.** If your inspection shows a locked decision is wrong, say so explicitly and propose superseding it with a new record — never quietly design around it.
 
@@ -44,7 +44,7 @@ Define a verification strategy proportional to actual risk. Do not require every
 
 ## Output
 
-Return a single design artifact in your final message, exactly following `templates/design.md` (Repositories / Cross-Repo Contracts / Change per repository / Regression Surface / Tests per repository / Risk / Status). The orchestrator will write it to `.brain/tickets/<ticket>/design.md`.
+Return a single design artifact in your final message, exactly following `templates/design.md` (Repositories / Cross-Repo Contracts / Change per repository / Regression Surface / Tests per repository / Risk / Status). The orchestrator will write it to `sis-brain/tickets/<ticket>/design.md`.
 
 - Concise, structured, factual, evidence-based; cite concrete files and symbols as `<repo>/<path>`. The code of record is `origin/<source_branch>` (see `workspace`).
 - End with `READY_FOR_IMPLEMENTATION` if the plan is actionable, otherwise `NEEDS_INPUT` with specifics.

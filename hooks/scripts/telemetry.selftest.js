@@ -46,9 +46,10 @@ function runExpectExit0(payload) {
 
 // ---------- fixture: a synthetic transcript with known token counts ----------
 const workspace = path.join(ROOT, "sis-workspace");
-const brain = path.join(workspace, ".brain");
+const brain = path.join(workspace, "sis-brain"); // any name; the marker is what identifies it
 const ticketDir = path.join(brain, "tickets", "GSIS-12345");
 fs.mkdirSync(ticketDir, { recursive: true });
+fs.writeFileSync(path.join(brain, ".harness-brain"), "");
 
 function turn(model, sidechain, usage, ts) {
   return JSON.stringify({
@@ -210,7 +211,7 @@ r = runExpectExit0({ session_id: "s3", transcript_path: path.join(ROOT, "nope.js
 check("nonexistent transcript -> exit 0", r.code === 0, String(r.code));
 const noBrain = fs.mkdtempSync(path.join(os.tmpdir(), "nobrain-"));
 r = runExpectExit0({ session_id: "s4", transcript_path: transcript, cwd: noBrain });
-check("no .brain -> exit 0 and writes nothing", r.code === 0 && fs.readdirSync(noBrain).length === 0);
+check("no brain -> exit 0 and writes nothing", r.code === 0 && fs.readdirSync(noBrain).length === 0);
 const corruptTicket = path.join(brain, "tickets", "GSIS-9999");
 fs.mkdirSync(corruptTicket, { recursive: true });
 fs.writeFileSync(path.join(corruptTicket, "state.json"), "{ this is not json");

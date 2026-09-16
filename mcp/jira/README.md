@@ -72,4 +72,4 @@ The harness degrades gracefully: `/work` and `/analyze` ask the user to paste th
 - Git provider MCP for PR creation (the harness currently uses `gh` if authenticated, otherwise a prefilled compare link for the human)
 - CI/CD and other enterprise systems
 
-If the installed MCP does not support an operation (e.g. attachments), the harness documents the limitation and continues with the local record in `.brain/tickets/<ticket-id>/`.
+If the installed MCP does not support an operation (e.g. attachments), the harness documents the limitation and continues with the local record in `sis-brain/tickets/<ticket-id>/`.

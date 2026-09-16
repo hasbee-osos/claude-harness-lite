@@ -17,19 +17,19 @@ The harness route is the one that knows about tickets, stages, repos and verdict
 
 `telemetry.js` runs as a hook on `SubagentStop`, `Stop` and `SessionEnd`. On each run it:
 
-1. reads the session transcript from the byte offset it last stopped at (a cursor per session in `.brain/metrics/`), so a 10 MB transcript is parsed once, not on every turn, and nothing is counted twice;
+1. reads the session transcript from the byte offset it last stopped at (a cursor per session in `sis-brain/metrics/`), so a 10 MB transcript is parsed once, not on every turn, and nothing is counted twice;
 2. sums `message.usage` per model, separating subagent turns (`isSidechain`) from the main thread;
-3. attributes that window to the ticket, stage and iteration named in `.brain/current.json`, which `/work` keeps current;
-4. appends the result to `.brain/metrics/runs.jsonl`;
-5. **recomputes** `.brain/metrics/harness.prom` and the ticket's `metrics.json` from the brain — journals for durations and verdicts, `state.json` for status and repos.
+3. attributes that window to the ticket, stage and iteration named in `sis-brain/current.json`, which `/work` keeps current;
+4. appends the result to `sis-brain/metrics/runs.jsonl`;
+5. **recomputes** `sis-brain/metrics/harness.prom` and the ticket's `metrics.json` from the brain — journals for durations and verdicts, `state.json` for status and repos.
 
 Recomputing rather than incrementing means the counters survive a crash, a killed session or a hand-edited file, and stay monotonic as Prometheus requires. Stage durations come from the journal's `stage_start`/`stage_end` pairs, not from transcript timestamps, so a stage that spans a coffee break is measured honestly.
 
-The hook is written never to interfere: everything is guarded, it writes nothing to stdout, and it always exits 0. If it hits an unexpected error it appends to `.brain/metrics/telemetry-errors.log` (capped at 64 KB) and gets out of the way. No brain folder means no telemetry and no complaint.
+The hook is written never to interfere: everything is guarded, it writes nothing to stdout, and it always exits 0. If it hits an unexpected error it appends to `sis-brain/metrics/telemetry-errors.log` (capped at 64 KB) and gets out of the way. No brain folder means no telemetry and no complaint.
 
 ### Metrics exposed
 
-`.brain/metrics/harness.prom` is in Prometheus textfile-collector format:
+`sis-brain/metrics/harness.prom` is in Prometheus textfile-collector format:
 
 | Metric | Type | Labels |
 |---|---|---|
@@ -52,7 +52,7 @@ The hook is written never to interfere: everything is guarded, it writes nothing
 Point node_exporter at the metrics folder:
 
 ```bash
-node_exporter --collector.textfile.directory=/path/to/sis-workspace/.brain/metrics
+node_exporter --collector.textfile.directory=/path/to/sis-workspace/sis-brain/metrics
 ```
 
 Every file ending in `.prom` in that directory is exposed on the node_exporter endpoint and scraped like any other target. Nothing else is needed — no server, no agent, no port to open in the workspace.

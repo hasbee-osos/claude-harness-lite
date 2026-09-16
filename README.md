@@ -16,7 +16,8 @@ The harness runs in a **workspace**: one parent folder holding the plugin, clone
 
 ```text
 C:\sis-repos\                            workspace folder (any name, any path)
-├── .brain\                              the shared brain repo (a clone)
+├── .ignore                              keeps the brain out of code searches
+├── sis-brain\                           the shared brain repo (a clone)
 ├── claude_harness_lite\                 this plugin (skipped as a product repo)
 ├── sis-product-sis-admin-backend\
 ├── sis-product-sis-frontend\
@@ -26,7 +27,7 @@ C:\sis-repos\                            workspace folder (any name, any path)
 - **Clone all product repos**, so the harness can follow a flow from the UI through every service.
 - The plugin repo has no GitHub remote yet, so **copy** `claude_harness_lite` in rather than cloning it.
 - Repos should have **no uncommitted work you care about**. The harness never touches uncommitted changes; it stops and asks if a repo it needs to change is dirty.
-- **Clone the brain repo** into the workspace as `.brain` (see Setup). It is hidden, so cross-repo code searches never return harness records as noise.
+- **Clone the brain repo** into the workspace (see Setup). The harness also writes a workspace `.ignore` listing `sis-brain/`, which keeps harness records out of cross-repo code searches while leaving the record itself searchable.
 - Nothing needs gitignoring in the workspace: it is not a git repo, so there is no `.gitignore` to get wrong.
 
 `skills/workspace/SKILL.md` defines the model: repo discovery, `git -C` and where the brain lives; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
@@ -45,14 +46,14 @@ Start `claude`, run `/mcp`, select `atlassian`, and complete the browser login, 
 
 > **Jira is read-only in harness sessions.** The `jira-guard` hook blocks every Atlassian tool except a small list of read tools. It only works while the plugin is loaded, so don't use the Atlassian tools in sessions started without `--plugin-dir`. As a second safety net, decline any prompt to create, edit, comment on or transition an issue, and never choose "always allow" for atlassian tools.
 
-**2. Clone the brain** (once per developer). A human creates an **empty private** GitHub repo for the team's record — e.g. `pbsgears/sis-harness-brain` — then everyone clones it into their workspace:
+**2. Clone the brain** (once per developer). A human creates an **empty private** GitHub repo for the team's record — e.g. `pbsgears/sis-brain` — then everyone clones it into their workspace:
 
 ```powershell
 cd C:\sis-repos
-git clone https://github.com/pbsgears/sis-harness-brain.git .brain
+git clone https://github.com/pbsgears/sis-brain.git
 ```
 
-The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use, and commits them. It commits and pushes at every milestone from then on.
+The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use and commits them, and writes the workspace `.ignore` so the records stay out of code searches. It commits and pushes at every milestone from then on.
 
 **3. Start Claude in the workspace:**
 
@@ -94,7 +95,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
   5. Create the ticket branch in each changed repo
   6. Implementor → Evaluator  (FAIL → implement + evaluate again, max 3 rounds)
   7. PR stage 1: push each branch, give a compare link per repo ⏸ human opens the PRs, pastes the URLs back
-  8. Publish a summary to Jira (blocked while Jira is read-only; the record stays in .brain/)
+  8. Publish a summary to Jira (blocked while Jira is read-only; the record stays in sis-brain/)
 ```
 
 It stops and waits for the human when:
@@ -105,7 +106,7 @@ It stops and waits for the human when:
 - 3 evaluation rounds fail. An escalation report is written.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 
-On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to `.brain\tickets\<ticket>\pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
+On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to `sis-brain\tickets\<ticket>\pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
 
 Run manually:
 - **`/pr <ticket>` for stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, this raises the customer sandbox PRs for each repo. `/work` stops after stage 1, because days can pass between stages.
@@ -136,10 +137,10 @@ The team's development guidelines are Markdown in this repo and are read on **ev
 
 ## The brain — the record of every run
 
-The brain is a **separate git repo, shared by the team**, cloned into each workspace as `.brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
+The brain is a **separate git repo, shared by the team**, cloned into each workspace as `sis-brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
 
 ```text
-.brain/                              committed:
+sis-brain/                           committed:
 ├── .harness-brain                   marker; git-guard allows commits here and nowhere else
 ├── index.jsonl                      every ticket the harness has worked on
 └── tickets/<TICKET-ID>/
@@ -171,11 +172,11 @@ At the end of a run, concise final artifacts are also published to the Jira tick
 
 A third hook, `telemetry.js`, runs when a subagent or a session ends. It reads the session transcript incrementally and records, per ticket and per stage, how many tokens each model used, how long each stage took, how many iterations ran, what the evaluator found and which repos were touched. It writes:
 
-- `.brain/metrics/runs.jsonl` — one record per collection window, with the ticket and stage
-- `.brain/metrics/harness.prom` — Prometheus textfile exposition, recomputed from the brain so the counters stay monotonic
-- `.brain/tickets/<ticket>/metrics.json` — the per-ticket rollup `/brain` reports
+- `sis-brain/metrics/runs.jsonl` — one record per collection window, with the ticket and stage
+- `sis-brain/metrics/harness.prom` — Prometheus textfile exposition, recomputed from the brain so the counters stay monotonic
+- `sis-brain/tickets/<ticket>/metrics.json` — the per-ticket rollup `/brain` reports
 
-Point node_exporter at `.brain/metrics` with `--collector.textfile.directory` and Grafana can chart first-pass rate, iterations per ticket, tokens per ticket and where the wall-clock goes. The metrics carry **no content** — counts, durations and bounded labels only, never a ticket ID, a prompt, a path or code. Claude Code's own OpenTelemetry export covers the complementary question of overall usage cost.
+Point node_exporter at `sis-brain/metrics` with `--collector.textfile.directory` and Grafana can chart first-pass rate, iterations per ticket, tokens per ticket and where the wall-clock goes. The metrics carry **no content** — counts, durations and bounded labels only, never a ticket ID, a prompt, a path or code. Claude Code's own OpenTelemetry export covers the complementary question of overall usage cost.
 
 `docs/telemetry.md` has the metric reference, the cardinality rule, the scrape setup, the OTel variables and the panels worth building first. The collector has a self-test: `node hooks/scripts/telemetry.selftest.js`.
 
@@ -206,7 +207,7 @@ templates/                     analysis, design, implementation-report, evaluati
 docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
 docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
 CLAUDE.md                      pointer for plugin developers (not loaded by plugin users)
-<workspace>/.brain/            the shared record repo: per-ticket state, journal, decisions, artifacts
+<workspace>/sis-brain/            the shared record repo: per-ticket state, journal, decisions, artifacts
 ```
 
 Model allocation: Analyzer/Designer/Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.
@@ -218,7 +219,7 @@ Judging whether the harness is worth investing in takes a handful of real ticket
 **Pick:** small, reproducible Bugs (or small Stories) with clear acceptance criteria, on the `base`, `gcet` or `gutech` line. Include at least one that touches a service **and** the UI.
 **Avoid:** hotfixes, OSOS, otc/cbfs, and anything urgent.
 
-The brain is the pilot's evidence: `.brain/tickets/<ticket>/` keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
+The brain is the pilot's evidence: `sis-brain/tickets/<ticket>/` keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
 
 | Question | Answer |
 |---|---|
@@ -240,7 +241,7 @@ Multi-repo support is new and untested on real tickets; the repo selection and t
 
 ## Limitations (by design)
 
-- Read-only Jira: the end-of-run summary is not posted; the record stays in `.brain/tickets/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
+- Read-only Jira: the end-of-run summary is not posted; the record stays in `sis-brain/tickets/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
 - Automatic PR creation requires an authenticated `gh`; otherwise the human opens each PR from a prefilled compare link.
 - No orchestration server, no database, no UI — the loop runs inside Claude Code.
 - PASS means "sufficient evidence for human review", not "guaranteed safe".

@@ -58,8 +58,8 @@ function check(name, command, expected, cwd) {
   }
 }
 
-const brain = mkrepo(".brain", "main", true);
-const fakeBrain = mkrepo("fake-brain", "main", false); // named like a brain, no marker
+const brain = mkrepo("sis-brain", "main", true);
+const fakeBrain = mkrepo(".brain", "main", false); // named like a brain, no marker
 const product = mkrepo("sis-product-sis-admin-backend", "base-sandbox-qa", false);
 const ticket = mkrepo("sis-product-sis-frontend", "base-bugfix-GSIS-1", false);
 

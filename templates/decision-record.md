@@ -1,6 +1,6 @@
 # Decision record template
 
-Decisions live in `.brain/tickets/<TICKET-ID>/decisions.md`, appended in order, with sequential IDs. One `###` block per decision, exactly these bullets, in this order.
+Decisions live in `sis-brain/tickets/<TICKET-ID>/decisions.md`, appended in order, with sequential IDs. One `###` block per decision, exactly these bullets, in this order.
 
 ```markdown
 ### D-<n> — <one-line statement of what was decided>

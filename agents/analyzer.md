@@ -34,7 +34,7 @@ Given a Jira ticket (ID or URL, with context provided by the orchestrator) and t
 
 ## Output
 
-Return a single analysis artifact in your final message, exactly following the template in `templates/analysis.md` (Problem / Expected / Observed / Repositories / Root Cause / Affected / Regression Surface / Evidence / Open Questions / Status). The orchestrator will write it to `.brain/tickets/<ticket>/analysis.md` and lock a decision record for the root cause you establish — so state the root cause as one falsifiable sentence, with the evidence that supports it and the alternatives you ruled out.
+Return a single analysis artifact in your final message, exactly following the template in `templates/analysis.md` (Problem / Expected / Observed / Repositories / Root Cause / Affected / Regression Surface / Evidence / Open Questions / Status). The orchestrator will write it to `sis-brain/tickets/<ticket>/analysis.md` and lock a decision record for the root cause you establish — so state the root cause as one falsifiable sentence, with the evidence that supports it and the alternatives you ruled out.
 
 - Be concise: senior-engineer notes, not an essay. 1–2 pages maximum.
 - Every claim about the code must cite concrete evidence (file paths, symbols).

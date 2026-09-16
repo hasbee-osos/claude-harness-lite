@@ -2,7 +2,7 @@
 
 This repository is written by the Claude Code engineering harness. It is the **record of every ticket the team's harness sessions have worked on** — what was done, what was decided, why, and what it cost.
 
-It is cloned into each developer's workspace as `.brain`, beside their product repo clones. Every session pulls it, records as it works, and pushes at each milestone, so it stays current for everyone.
+It is cloned into each developer's workspace as `sis-brain`, beside their product repo clones. Every session pulls it, records as it works, and pushes at each milestone, so it stays current for everyone.
 
 Copy this file to the brain repo's `README.md` the first time it is created.
 
