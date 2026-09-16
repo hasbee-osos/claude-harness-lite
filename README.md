@@ -105,7 +105,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 | Command | Purpose |
 |---|---|
 | `/work <ticket-id-or-url>` | Full workflow: Jira → analyze → design → implement → evaluate loop (max 3 iterations) → PRs → publish summary to Jira where supported |
-| `/analyze <ticket>` | Analyzer only: root-cause analysis + which repos are involved; stops before design |
+| `/analyze <ticket>` | Analyzer only: root cause (bug) or gap, scope and acceptance criteria (story) + which repos are involved; stops before design |
 | `/design [ticket]` | Designer only: plan per repo + test strategy; requires an analysis artifact |
 | `/implement [ticket]` | Implementor only: code + tests + verification in each confirmed repo; requires analysis + design |
 | `/evaluate [ticket]` | Evaluator only; verdict per repo and overall: PASS / FAIL / INSUFFICIENT_EVIDENCE |
