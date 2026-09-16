@@ -26,8 +26,9 @@ It replaces the old `.runtime/` folder. That folder was declared temporary scrat
     ├── state.json             ← the resume point
     ├── journal.jsonl          ← append-only event log
     ├── decisions.md           ← locked decisions with justification
-    ├── analysis.md
+    ├── analysis.md            ← a later revision is analysis-2.md, …
     ├── design.md
+    ├── qa-packet.md | sme-packet.md  ← paste-ready Jira comment when a stage needs answers (input-packets)
     ├── implementation-report-1.md, -2.md, …
     ├── evaluation-1.md, -2.md, …
     ├── escalation-report.md
@@ -110,6 +111,7 @@ This record is pushed to GitHub and read by the whole team, so the list is not a
   "decisions": ["D-1", "D-2", "D-3"],
   "artifacts": {
     "analysis": "analysis.md",
+    "qa_packet": "qa-packet.md",
     "design": "design.md",
     "implementation": "implementation-report-2.md",
     "evaluation": "evaluation-2.md"

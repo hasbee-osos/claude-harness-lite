@@ -14,4 +14,4 @@ Input: `$ARGUMENTS` (Jira ticket ID or URL). Read the `ground-rules`, `workspace
 4. Write the returned artifact to `sis-brain/tickets/<ticket-id>/analysis.md`, lock a decision record for the root cause, and update `state.json` (`analysis: READY` or the NEEDS_INPUT status, plus `artifacts`, `updated_at` and `next_action`). Journal `stage_start`/`stage_end` around the dispatch.
 5. Present a short summary of the analysis to the user, including the repos marked change vs context.
 
-**Stop here.** No design, no implementation. If the analyzer returns `NEEDS_INPUT`, surface the open questions to the human.
+**Stop here.** No design, no implementation. If the analyzer returns `NEEDS_INPUT`, write the input packet (`input-packets`: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature), commit and push, and surface the open questions and the packet path to the human.
