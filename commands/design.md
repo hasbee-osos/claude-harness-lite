@@ -13,4 +13,4 @@ Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, infer the ticket from
 3. Write the returned artifact to `sis-brain/tickets/<ticket-id>/design.md`, append the designer's decision records (fix approach, test strategy, any convention deviation) to `decisions.md`, and update `state.json` (`design: READY`, `artifacts`, `updated_at`, `next_action`). Journal `stage_start`/`stage_end`.
 4. Present the repos to change, cross-repo contracts, change plan, regression surface, and test strategy summary to the user.
 
-**Stop here.** No implementation. If the designer returns `NEEDS_INPUT`, surface the specifics to the human.
+**Stop here.** No implementation. If the designer returns `NEEDS_INPUT`, write the input packet for the questions QA or the SME can answer (`input-packets`), commit and push, and surface all the specifics to the human.

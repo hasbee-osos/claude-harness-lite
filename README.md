@@ -104,7 +104,7 @@ It stops and waits for the human when:
 - The flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
 - The repos to change need confirmation. No branch is created before that.
 - A repo to change has uncommitted changes, or Jira can't be read.
-- The Analyzer or Designer returns `NEEDS_INPUT`.
+- The Analyzer or Designer returns `NEEDS_INPUT`. The harness writes a paste-ready Jira comment with the questions to `sis-brain/tickets/<ticket>/`: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
 - 3 evaluation rounds fail. An escalation report is written.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 
@@ -200,12 +200,13 @@ skills/                        architecture, springboot, angular, postgresql, te
                                engineering-standards, repository-analysis,
                                characterization-testing, git-workflow, workspace, brain,
                                jira-attachments (download attachments, frames from recordings),
+                               input-packets (QA / SME questions as a paste-ready Jira comment),
                                ground-rules (the harness rules every command/agent reads first)
 hooks/                         PreToolUse git-guard (protected branches, destructive ops, gh allowlist)
                                and jira-guard (read-only Atlassian MCP tools);
                                telemetry.js collects token and duration metrics
 mcp/jira/README.md             read-only Jira MCP integration point
-templates/                     analysis, design, implementation-report, evaluation,
+templates/                     analysis, design, implementation-report, evaluation, qa-packet, sme-packet,
                                escalation-report, decision-record, brain-readme
 docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
 docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
