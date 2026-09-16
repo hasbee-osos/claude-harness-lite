@@ -5,11 +5,13 @@ description: Multi-repository workspace model - how the harness finds the produc
 
 # Workspace
 
-The harness runs in a **workspace**: a parent folder that holds clones of the product repos (7 Spring Boot services + the Angular UI). Claude is started in that folder. One ticket may change several repos.
+The harness runs in a **workspace**: a parent folder that holds clones of the product repos (7 Spring Boot services + the Angular UI), the brain repo, and the plugin. Claude is started in that folder. One ticket may change several repos.
+
+The workspace folder itself is **never a git repo** — it is a plain container, and its name is the developer's choice.
 
 ```text
 <workspace>/                 ← Claude session directory
-├── .brain/                  ← the brain: one folder per ticket (never inside a product repo)
+├── .brain/                  ← the brain repo (clone; skipped as a product repo)
 ├── claude_harness_lite/     ← the plugin (not a product repo)
 ├── sis-product-sis-admin-backend/
 ├── sis-product-sis-frontend/
@@ -18,7 +20,7 @@ The harness runs in a **workspace**: a parent folder that holds clones of the pr
 
 ## Finding the repos
 
-- **Product repos** are the immediate subfolders of the session directory that contain `.git`. Skip any folder containing `.claude-plugin/` (the harness itself) and any folder that is not a git repo.
+- **Product repos** are the immediate subfolders of the session directory that contain `.git`. Skip any folder containing `.claude-plugin/` (the harness plugin) or `.harness-brain` (the brain repo), and any folder that is not a git repo.
 - **Single-repo mode:** if the session directory itself is a git repo, it is the workspace's only repo.
 - Refer to repos by folder name (e.g. `sis-product-sis-frontend`). Cite code as `<repo>/<path>`.
 - The branching strategy (`git-workflow`) is the same in every repo.
@@ -42,5 +44,5 @@ Every harness run records its state, decisions and artifacts in `<workspace>/.br
 
 Two things matter here in the workspace:
 
-- The brain sits at the **workspace root**, beside the repo clones — never inside a product repo. If the workspace folder is itself a git repo, `git check-ignore -q .brain` must succeed before writing; otherwise stop and ask the human to ignore it.
+- The brain is **its own git repo**, cloned into the workspace root as `.brain`, beside the product clones — never inside a product repo. `git -C .brain` writes are allowed by git-guard; product repos are unchanged.
 - `state.json` `repos` is the list of repos this ticket may change. Every other repo is read-only context.

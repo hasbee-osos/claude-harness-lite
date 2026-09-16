@@ -12,12 +12,12 @@ Jira → Analyzer (which repos?) → Designer (plan per repo) → human confirms
 
 ## Workspace
 
-The harness runs in a **workspace**: one parent folder holding the plugin and clones of all product repos, with Claude started in that folder. A ticket may change several repos; the Analyzer works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
+The harness runs in a **workspace**: one parent folder holding the plugin, clones of all product repos, and the shared brain repo, with Claude started in that folder. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Analyzer works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
 
 ```text
-C:\sis-workspace\                          workspace folder (any path)
-├── .brain\                                the brain: one folder per ticket, outside every repo
-├── claude_harness_lite\                   this plugin (skipped as a product repo)
+C:\sis-repos\                            workspace folder (any name, any path)
+├── .brain\                              the shared brain repo (a clone)
+├── claude_harness_lite\                 this plugin (skipped as a product repo)
 ├── sis-product-sis-admin-backend\
 ├── sis-product-sis-frontend\
 └── …the other services…
@@ -26,7 +26,8 @@ C:\sis-workspace\                          workspace folder (any path)
 - **Clone all product repos**, so the harness can follow a flow from the UI through every service.
 - The plugin repo has no GitHub remote yet, so **copy** `claude_harness_lite` in rather than cloning it.
 - Repos should have **no uncommitted work you care about**. The harness never touches uncommitted changes; it stops and asks if a repo it needs to change is dirty.
-- Nothing needs gitignoring: `.brain\` sits in the workspace folder, outside every repo.
+- **Clone the brain repo** into the workspace as `.brain` (see Setup). It is hidden, so cross-repo code searches never return harness records as noise.
+- Nothing needs gitignoring in the workspace: it is not a git repo, so there is no `.gitignore` to get wrong.
 
 `skills/workspace/SKILL.md` defines the model: repo discovery, `git -C` and where the brain lives; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
 
@@ -44,17 +45,26 @@ Start `claude`, run `/mcp`, select `atlassian`, and complete the browser login, 
 
 > **Jira is read-only in harness sessions.** The `jira-guard` hook blocks every Atlassian tool except a small list of read tools. It only works while the plugin is loaded, so don't use the Atlassian tools in sessions started without `--plugin-dir`. As a second safety net, decline any prompt to create, edit, comment on or transition an issue, and never choose "always allow" for atlassian tools.
 
-**2. Start Claude in the workspace:**
+**2. Clone the brain** (once per developer). A human creates an **empty private** GitHub repo for the team's record — e.g. `pbsgears/sis-harness-brain` — then everyone clones it into their workspace:
 
 ```powershell
-cd C:\sis-workspace
-claude --plugin-dir "C:\sis-workspace\claude_harness_lite"
+cd C:\sis-repos
+git clone https://github.com/pbsgears/sis-harness-brain.git .brain
+```
+
+The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use, and commits them. It commits and pushes at every milestone from then on.
+
+**3. Start Claude in the workspace:**
+
+```powershell
+cd C:\sis-repos
+claude --plugin-dir "C:\sis-repos\claude_harness_lite"
 # or add a marketplace entry pointing at this repository
 ```
 
 Keep the default permission mode, so each command is approved. If `/work` is not recognized, use `/engineering-harness:work`; the same applies to the other commands.
 
-**3. Smoke-test both guards** before the first real ticket:
+**4. Smoke-test both guards** before the first real ticket:
 
 - **Git guard:** pick a repo sitting on a protected branch (e.g. `base-sandbox-qa`) and ask Claude to run `git -C <that-repo-folder> commit --allow-empty -m guard-test`. It must be **blocked by engineering-harness git-guard**. If the commit goes through, stop and check that Node is on PATH and the plugin loaded. Undo a test commit with `git -C <repo> reset --soft HEAD~1`.
 - **Jira guard:** ask Claude to add a comment to a ticket. It must be **blocked by engineering-harness jira-guard**. Then ask it to read the ticket; that must work. If a read is blocked, add the blocked tool name to `READ_TOOLS` in `hooks/scripts/jira-guard.js`.
@@ -126,31 +136,37 @@ The team's development guidelines are Markdown in this repo and are read on **ev
 
 ## The brain — the record of every run
 
-`<workspace>/.brain/` is the harness's memory, and it accumulates as the team uses it.
+The brain is a **separate git repo, shared by the team**, cloned into each workspace as `.brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
 
 ```text
-.brain/
+.brain/                              committed:
+├── .harness-brain                   marker; git-guard allows commits here and nowhere else
 ├── index.jsonl                      every ticket the harness has worked on
-├── current.json                     which ticket and stage is running now
-├── metrics/                         runs.jsonl + harness.prom (see Telemetry)
 └── tickets/<TICKET-ID>/
     ├── state.json                   status, iteration, branch, repos, PRs, and next_action
     ├── journal.jsonl                append-only event log with timestamps
     ├── decisions.md                 every decision, with its justification and evidence
     ├── analysis.md, design.md
     ├── implementation-report-1.md, evaluation-1.md, -2.md, …
-    └── pr-<repo>-<target>.md
+    ├── pr-<repo>-<target>.md
+    └── metrics.json                 what this ticket cost
+
+                                     not committed (machine-local):
+├── current.json                     which ticket this machine is on right now
+└── metrics/                         runs.jsonl + harness.prom (see Telemetry)
 ```
 
-Three properties make it worth keeping:
+Four properties make it worth keeping:
 
 - **Resumable.** `next_action` is written in plain words on every transition, so any session can pick a ticket up — `/work <ticket>` to continue, `/brain <ticket>` to just look.
 - **Traceable.** Decisions are numbered, justified, evidence-backed and **locked**. A later stage that contradicts one without superseding it is a blocking evaluator finding. When a bug is reopened months later, `decisions.md` says why the fix was built this way and which alternatives were rejected.
 - **Complete.** Iteration artifacts are numbered, never overwritten, so what the evaluator caught in round 1 survives round 2.
+- **Shared.** Per-ticket folders mean two developers' sessions never touch the same file, so everyone pushes to `main` directly — no PRs, no review gate, no conflicts in practice.
 
-What never goes in: chain-of-thought, secrets, bulk file dumps, or Jira content beyond what the work needs. The brain lives at the workspace root, never inside a product repo, and is never committed into one. `skills/brain/SKILL.md` is the full specification.
+What never goes in: chain-of-thought, secrets, bulk file dumps, or Jira content beyond what the work needs — the record is pushed to GitHub and read by the whole team. The brain sits at the workspace root, never inside a product repo. `skills/brain/SKILL.md` is the full specification.
 
-At the end of a run, concise final artifacts are also published to the Jira ticket **only if** the configured Jira MCP supports writes; otherwise the limitation is documented and the record stays local. Jira remains the system of record for the work item; Git holds only the product change.
+At the end of a run, concise final artifacts are also published to the Jira ticket **only if** the configured Jira MCP supports writes; otherwise the limitation is documented and the record stays in the brain. Jira remains the system of record for the work item; the product repos hold only the product change.
+
 ## Telemetry
 
 A third hook, `telemetry.js`, runs when a subagent or a session ends. It reads the session transcript incrementally and records, per ticket and per stage, how many tokens each model used, how long each stage took, how many iterations ran, what the evaluator found and which repos were touched. It writes:
@@ -165,7 +181,7 @@ Point node_exporter at `.brain/metrics` with `--collector.textfile.directory` an
 
 ## Git safety
 
-The `git-guard` PreToolUse hook blocks destructive operations (force-push, `reset --hard`, `clean -f`, …), git commit/push/merge on protected branches, and pushes whose destination is a protected branch (`HEAD:gcet-qa`, `--all`), for both the Bash and PowerShell tools. It checks the branch of the repo each git command actually targets (`git -C`, `cd`/`Set-Location`), so it works from the workspace folder, and denies git write commands whose repo it cannot determine. It also restricts the GitHub CLI to reads plus `gh pr create` — merging, approving, commenting, editing PRs, triggering workflows, and write `gh api` calls are denied, because `gh` runs with the human's full GitHub permissions. The branching strategy — flows, branch naming, PR targets, and the protected-branch list the hook reads — is defined only in `skills/git-workflow/SKILL.md` (source PDF and repository analysis under `references/`). To change the strategy, edit that file. The harness never merges, never approves its own PR, never bypasses checks.
+The `git-guard` PreToolUse hook blocks destructive operations (force-push, `reset --hard`, `clean -f`, …), git commit/push/merge on protected branches, and pushes whose destination is a protected branch (`HEAD:gcet-qa`, `--all`), for both the Bash and PowerShell tools. It checks the branch of the repo each git command actually targets (`git -C`, `cd`/`Set-Location`), so it works from the workspace folder, and denies git write commands whose repo it cannot determine. The harness's own record repo is the one exception: a repo whose root holds a `.harness-brain` marker may be committed and pushed to on any branch, because writing the record is the point. Force-push and history rewriting stay blocked there too, and the marker — not the folder name — is what grants it, so no product repo can inherit it. It also restricts the GitHub CLI to reads plus `gh pr create` — merging, approving, commenting, editing PRs, triggering workflows, and write `gh api` calls are denied, because `gh` runs with the human's full GitHub permissions. Both guards have self-tests (`node hooks/scripts/git-guard.selftest.js`). The branching strategy — flows, branch naming, PR targets, and the protected-branch list the hook reads — is defined only in `skills/git-workflow/SKILL.md` (source PDF and repository analysis under `references/`). To change the strategy, edit that file. The harness never merges, never approves its own PR, never bypasses checks.
 
 A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers it allows only the read tools in its allowlist and denies everything else (see `mcp/jira/README.md`).
 
@@ -190,7 +206,7 @@ templates/                     analysis, design, implementation-report, evaluati
 docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
 docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
 CLAUDE.md                      pointer for plugin developers (not loaded by plugin users)
-<workspace>/.brain/            the record: per-ticket state, journal, decisions, artifacts, metrics
+<workspace>/.brain/            the shared record repo: per-ticket state, journal, decisions, artifacts
 ```
 
 Model allocation: Analyzer/Designer/Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.

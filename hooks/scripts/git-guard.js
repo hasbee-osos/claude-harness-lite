@@ -10,6 +10,11 @@
  *     workspace. Write commands whose target repo cannot be determined are denied.
  *  3. Any GitHub CLI (gh) command outside a read-only + PR-create allowlist.
  *
+ * Exception: the harness's own record repo (the brain) is identified by a BRAIN_MARKER file at
+ * its root, not by its folder name. Commits and pushes are allowed there on any branch, because
+ * the brain is a shared log the harness is meant to write to. Force-pushing and history rewriting
+ * stay blocked there like everywhere else.
+ *
  * Input:  JSON on stdin (Claude Code hook payload).
  * Output: JSON deny decision on stdout when blocked; silent allow otherwise.
  */
@@ -238,6 +243,17 @@ function isProtected(branch, rules) {
   return Boolean(branch) && rules.some((re) => re.test(branch));
 }
 
+// The brain is the harness's own record repo. A marker file - not a folder name - grants the
+// exception, so a product repo cannot inherit it by being renamed.
+const BRAIN_MARKER = ".harness-brain";
+function isBrainRepo(dir) {
+  try {
+    return fs.existsSync(path.join(dir, BRAIN_MARKER));
+  } catch {
+    return false;
+  }
+}
+
 // Destination branches named explicitly on a push command line.
 const PUSH_OPTS_WITH_VALUE = new Set(["--repo", "-o", "--push-option", "--receive-pack", "--exec"]);
 function pushDestinations(args) {
@@ -308,7 +324,10 @@ process.stdin.on("end", () => {
     if (branch === null) {
       deny("`git " + w.sub + "` would run in `" + w.dir + "`, which is not a git repository. Use `git -C <repo> " + w.sub + " …`.");
     }
-    if (isProtected(branch, rules)) {
+    // The brain records the harness's own work; committing and pushing there is the point.
+    const brain = isBrainRepo(w.dir) && (w.sub === "commit" || w.sub === "push");
+
+    if (!brain && isProtected(branch, rules)) {
       deny(
         "Refusing `git " + w.sub + "` in `" + w.dir + "` on protected branch `" + branch + "`. Create a ticket branch per the git-workflow skill first."
       );
@@ -317,8 +336,10 @@ process.stdin.on("end", () => {
       const p = pushDestinations(w.args);
       if (p.all) deny("Refusing to push all branches from `" + w.dir + "`; push the ticket branch explicitly.");
       if (p.forced) deny("Refusing forced refspec push (`+`) from `" + w.dir + "`.");
-      const hit = p.destinations.find((d) => isProtected(d, rules));
-      if (hit) deny("Refusing to push to protected branch `" + hit + "` from `" + w.dir + "`. Push only the ticket branch.");
+      if (!brain) {
+        const hit = p.destinations.find((d) => isProtected(d, rules));
+        if (hit) deny("Refusing to push to protected branch `" + hit + "` from `" + w.dir + "`. Push only the ticket branch.");
+      }
     }
   }
 

@@ -1,22 +1,25 @@
 ---
 name: brain
-description: The workspace brain - the durable per-ticket record of every harness run (state, append-only journal, locked decisions with justification, versioned artifacts, metrics), how to resume a ticket in a new session, and what must never be written there. Read before any harness command or agent acts.
+description: The brain - the team's shared git repo, cloned into the workspace as .brain, holding the durable per-ticket record of every harness run (state, append-only journal, locked decisions with justification, versioned artifacts, metrics), how to sync it, how to resume a ticket in a new session, and what must never be written there. Read before any harness command or agent acts.
 ---
 
 # The Brain
 
-The workspace accumulates a **brain**: one durable folder per ticket recording what the harness did, what it decided, and why. Any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
+The **brain** is the team's shared record: a git repo cloned into the workspace as `.brain`, with one folder per ticket recording what the harness did, what it decided, and why. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
 
 It replaces the old `.runtime/` folder. That folder was declared temporary scratch, so iteration history was overwritten and the reasoning behind a fix was lost when the session ended. **If a ticket is reopened, the brain is the answer to "why was it done this way?".**
 
 ## Layout
 
 ```text
-<workspace>/.brain/
+<workspace>/.brain/            ← a clone of the team's brain repo
+├── .harness-brain             ← marker; git-guard allows commits and pushes here
+├── .gitignore                 ← metrics/ , current.json
+├── .gitattributes             ← *.jsonl merge=union
 ├── README.md                  ← seeded on first run
-├── index.jsonl                ← one line per ticket milestone (append-only)
-├── current.json               ← the live pointer: which ticket/stage is running now
-├── metrics/
+├── index.jsonl                ← one line per ticket milestone (append-only, shared)
+├── current.json               ← live pointer: which ticket/stage is running now — NOT committed
+├── metrics/                   ← NOT committed; Prometheus reads these from disk
 │   ├── runs.jsonl             ← one record per collection window (telemetry)
 │   └── harness.prom           ← Prometheus textfile exposition
 └── tickets/<TICKET-ID>/
@@ -32,12 +35,26 @@ It replaces the old `.runtime/` folder. That folder was declared temporary scrat
     └── metrics.json           ← per-ticket rollup
 ```
 
-- **Never inside a product repo.** The brain lives at the workspace root, beside the repo clones.
-- If the workspace folder is itself a git repo, `git check-ignore -q .brain` must succeed before writing — otherwise stop and ask the human to ignore it. This changes once the team version-controls the brain deliberately; until then it must not ride along in a product commit.
+- **The brain is its own git repo**, shared by the team and cloned into the workspace as `.brain`. The workspace folder around it is a plain container and is never version-controlled.
+- **Never inside a product repo.** The brain sits at the workspace root, beside the repo clones. If `.brain` is missing or is not a git repo, say so and ask the human to clone it — do not silently start a local-only brain.
 - **Iteration artifacts are numbered, never overwritten.** `evaluation-1.md` survives iteration 2. `state.json` `artifacts` records the latest of each.
-- Create the folder on first touch of a ticket, and seed `.brain/README.md` from `templates/brain-readme.md` if it does not exist.
+- On first use, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore` (`metrics/`, `current.json`) and `.gitattributes` (`*.jsonl merge=union`) — and commit them.
+
+## Syncing
+
+The brain is shared, so every session keeps it current. All of this runs as `git -C <workspace>/.brain …`.
+
+- **Pull before reading.** `git -C .brain pull --rebase` when a ticket starts or resumes, so you see what colleagues have recorded.
+- **Commit and push at every milestone**, not only at the end: analysis written, design and repos confirmed, each branch created, each evaluation verdict, PRs prepared, ticket closed. A session that dies mid-ticket must leave nothing stranded on one machine.
+- **Commit message:** `<TICKET-ID>: <milestone>` — e.g. `GSIS-12345: evaluation 2 - FAIL, 2 blocking`. One ticket per commit; never mix two tickets.
+- **Rejected push?** `git -C .brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
+- **Conflicts are rare by design.** Each ticket owns its folder, so two people on two tickets never collide. `index.jsonl` is shared but append-only, and `merge=union` resolves it automatically. A genuine conflict means two sessions worked the same ticket: stop and ask the human which record is right.
+- Everyone commits straight to `main`. The brain is a record, not code — there is no review gate, because a gate would stop it being current.
+- `metrics/` and `current.json` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
 
 ## What must never be written to the brain
+
+This record is pushed to GitHub and read by the whole team, so the list is not advisory.
 
 - **Chain-of-thought.** Record conclusions, decisions and evidence — not reasoning transcripts.
 - **Secrets, credentials, tokens, connection strings** — in any artifact, journal line or PR description.
