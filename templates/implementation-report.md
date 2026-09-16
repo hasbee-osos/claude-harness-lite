@@ -37,6 +37,12 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 
 <how the contracts from the design match on both sides, with file references; or "Single repo.">
 
+## Decisions
+
+- **Followed:** <decision IDs this implementation follows, with where: D-3 → `<repo>/<path>:<line>`>
+- **New:** <decisions locked during implementation — typically a convention deviation — each written in full into `decisions.md`>
+- **Contradicted:** <"None." — or stop and report; an implementation must not contradict a LOCKED decision without superseding it>
+
 ## Deviations from Design
 
 <deviations with justification, or "None.">

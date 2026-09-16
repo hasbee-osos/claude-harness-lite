@@ -12,6 +12,7 @@ PASS | FAIL | INSUFFICIENT_EVIDENCE
 | <repo-folder> | PASS \| FAIL \| INSUFFICIENT_EVIDENCE | <one line> |
 | Cross-repo consistency | PASS \| FAIL \| N/A | <one line> |
 | Project conventions | PASS \| FAIL | <guidelines checked; unjustified breaches are blocking> |
+| Locked decisions | PASS \| FAIL | <decisions checked; an unsuperseded contradiction is blocking> |
 
 ## Blocking Findings
 
@@ -28,6 +29,12 @@ PASS | FAIL | INSUFFICIENT_EVIDENCE
 ## Recommended Changes
 
 - <optional improvements>
+
+## Decisions Checked
+
+| ID | Decision | Followed? | Note |
+|---|---|---|---|
+| D-<n> | <one line> | YES \| SUPERSEDED by D-<n> \| **CONTRADICTED** | <where, with file reference> |
 
 ## Evidence
 

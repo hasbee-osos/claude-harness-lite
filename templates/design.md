@@ -14,6 +14,12 @@ Corrections to the analysis's repo list: <or "None.">
 
 - <project guidelines this change must follow: base classes, `@PreAuthorizeGrant`, Liquibase script, common components, error handling, date handling, … — with the rule's source>
 
+## Decisions
+
+- **Following:** <locked decision IDs this design is built on, e.g. D-1 (flow), D-2 (root cause)>
+- **New:** <one line per decision this design locks — fix approach, test strategy, any convention deviation — each written in full into `decisions.md` using `templates/decision-record.md`>
+- **Superseding:** <locked decision this design overturns, with the reason; or "None.">
+
 ## Cross-Repo Contracts
 
 - <endpoint / DTO field / error code / shared DB object that both sides must agree on, or "None — single repo.">

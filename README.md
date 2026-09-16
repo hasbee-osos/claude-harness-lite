@@ -16,7 +16,7 @@ The harness runs in a **workspace**: one parent folder holding the plugin and cl
 
 ```text
 C:\sis-workspace\                          workspace folder (any path)
-├── .runtime\<ticket-id>\                  harness state, outside every product repo
+├── .brain\                                the brain: one folder per ticket, outside every repo
 ├── claude_harness_lite\                   this plugin (skipped as a product repo)
 ├── sis-product-sis-admin-backend\
 ├── sis-product-sis-frontend\
@@ -26,9 +26,9 @@ C:\sis-workspace\                          workspace folder (any path)
 - **Clone all product repos**, so the harness can follow a flow from the UI through every service.
 - The plugin repo has no GitHub remote yet, so **copy** `claude_harness_lite` in rather than cloning it.
 - Repos should have **no uncommitted work you care about**. The harness never touches uncommitted changes; it stops and asks if a repo it needs to change is dirty.
-- Nothing needs gitignoring: `.runtime\` sits in the workspace folder, outside every repo.
+- Nothing needs gitignoring: `.brain\` sits in the workspace folder, outside every repo.
 
-`skills/workspace/SKILL.md` defines the model: repo discovery, `git -C`, runtime location and the `state.json` schema. Opening Claude inside a single repo also works (single-repo mode).
+`skills/workspace/SKILL.md` defines the model: repo discovery, `git -C` and where the brain lives; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
 
 ## Setup
 
@@ -68,6 +68,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 | `/design [ticket]` | Designer only: plan per repo + test strategy; requires an analysis artifact |
 | `/implement [ticket]` | Implementor only: code + tests + verification in each confirmed repo; requires analysis + design |
 | `/evaluate [ticket]` | Evaluator only; verdict per repo and overall: PASS / FAIL / INSUFFICIENT_EVIDENCE |
+| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only |
 | `/pr [ticket]` | PR creation per changed repo × target, gated on evaluator PASS; without `gh`, pushes each branch and gives a prefilled GitHub compare link + description for the human to open the PR; **never merges** |
 
 ### How `/work` runs
@@ -83,7 +84,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
   5. Create the ticket branch in each changed repo
   6. Implementor → Evaluator  (FAIL → implement + evaluate again, max 3 rounds)
   7. PR stage 1: push each branch, give a compare link per repo ⏸ human opens the PRs, pastes the URLs back
-  8. Publish a summary to Jira (blocked while Jira is read-only; artifacts stay in .runtime/)
+  8. Publish a summary to Jira (blocked while Jira is read-only; the record stays in .brain/)
 ```
 
 It stops and waits for the human when:
@@ -94,13 +95,13 @@ It stops and waits for the human when:
 - 3 evaluation rounds fail. An escalation report is written.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 
-On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to `.runtime\<ticket>\pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
+On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to `.brain\tickets\<ticket>\pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
 
 Run manually:
 - **`/pr <ticket>` for stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, this raises the customer sandbox PRs for each repo. `/work` stops after stage 1, because days can pass between stages.
 - **The single-stage commands**, only when wanted: to re-run one stage (e.g. `/evaluate` after a manual fix), or to review each artifact before moving on. Running `/analyze <ticket>` alone is a cheap way to check the root cause and repo list before a full run.
 
-Re-running `/work <ticket>` after an interruption resumes from the status in `.runtime/<ticket>/state.json`.
+Re-running `/work <ticket>` after an interruption — even days later, in a new session or on another machine — resumes from the brain: it prints what is done, which decisions are locked, what the human already confirmed and what happens next, then continues from there. It never re-asks a confirmation already recorded, and never redoes a stage whose artifact exists.
 
 Claude never merges, approves, force-pushes, pushes to protected branches, raises `base-development` PRs, or does hotfixes. Those stay with the human.
 
@@ -123,10 +124,33 @@ The team's development guidelines are Markdown in this repo and are read on **ev
 - `skills/springboot/references/java-code-review-guidelines.md` — general Java review criteria; project rules win where they differ
 - `docs/maintaining-guidelines.md` — how to correct or extend a rule
 
-## Runtime artifacts & Jira
+## The brain — the record of every run
 
-`<workspace>/.runtime/<ticket-id>/` holds `state.json`, `analysis.md`, `design.md`, `implementation-report.md`, `evaluation.md` (and `escalation-report.md` on escalation). It is temporary agent-to-agent state, never committed, and never contains chain-of-thought. At the end of a run, concise final artifacts are published to the Jira ticket **only if** the configured Jira MCP supports writes; otherwise the limitation is documented and artifacts stay local. Jira is the persistent system of record; Git contains only the product change.
+`<workspace>/.brain/` is the harness's memory, and it accumulates as the team uses it.
 
+```text
+.brain/
+├── index.jsonl                      every ticket the harness has worked on
+├── current.json                     which ticket and stage is running now
+├── metrics/                         runs.jsonl + harness.prom (see Telemetry)
+└── tickets/<TICKET-ID>/
+    ├── state.json                   status, iteration, branch, repos, PRs, and next_action
+    ├── journal.jsonl                append-only event log with timestamps
+    ├── decisions.md                 every decision, with its justification and evidence
+    ├── analysis.md, design.md
+    ├── implementation-report-1.md, evaluation-1.md, -2.md, …
+    └── pr-<repo>-<target>.md
+```
+
+Three properties make it worth keeping:
+
+- **Resumable.** `next_action` is written in plain words on every transition, so any session can pick a ticket up — `/work <ticket>` to continue, `/brain <ticket>` to just look.
+- **Traceable.** Decisions are numbered, justified, evidence-backed and **locked**. A later stage that contradicts one without superseding it is a blocking evaluator finding. When a bug is reopened months later, `decisions.md` says why the fix was built this way and which alternatives were rejected.
+- **Complete.** Iteration artifacts are numbered, never overwritten, so what the evaluator caught in round 1 survives round 2.
+
+What never goes in: chain-of-thought, secrets, bulk file dumps, or Jira content beyond what the work needs. The brain lives at the workspace root, never inside a product repo, and is never committed into one. `skills/brain/SKILL.md` is the full specification.
+
+At the end of a run, concise final artifacts are also published to the Jira ticket **only if** the configured Jira MCP supports writes; otherwise the limitation is documented and the record stays local. Jira remains the system of record for the work item; Git holds only the product change.
 ## Git safety
 
 The `git-guard` PreToolUse hook blocks destructive operations (force-push, `reset --hard`, `clean -f`, …), git commit/push/merge on protected branches, and pushes whose destination is a protected branch (`HEAD:gcet-qa`, `--all`), for both the Bash and PowerShell tools. It checks the branch of the repo each git command actually targets (`git -C`, `cd`/`Set-Location`), so it works from the workspace folder, and denies git write commands whose repo it cannot determine. It also restricts the GitHub CLI to reads plus `gh pr create` — merging, approving, commenting, editing PRs, triggering workflows, and write `gh api` calls are denied, because `gh` runs with the human's full GitHub permissions. The branching strategy — flows, branch naming, PR targets, and the protected-branch list the hook reads — is defined only in `skills/git-workflow/SKILL.md` (source PDF and repository analysis under `references/`). To change the strategy, edit that file. The harness never merges, never approves its own PR, never bypasses checks.
@@ -135,24 +159,26 @@ A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers
 
 ## Architecture
 
-Four agents with strictly separated responsibilities; commands orchestrate them; skills provide reusable knowledge; two hooks enforce Git and Jira safety; runtime state lives in `.runtime/` and is never committed.
+Four agents with strictly separated responsibilities; commands orchestrate them; skills provide reusable knowledge; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
 
 ```
 .claude-plugin/plugin.json     plugin manifest
 agents/                        analyzer, designer, implementor, evaluator
-commands/                      /work /analyze /design /implement /evaluate /pr
+commands/                      /work /analyze /design /implement /evaluate /pr /brain
 skills/                        architecture, springboot, angular, postgresql, testing,
                                engineering-standards, repository-analysis,
-                               characterization-testing, git-workflow, workspace,
+                               characterization-testing, git-workflow, workspace, brain,
                                ground-rules (the harness rules every command/agent reads first)
 hooks/                         PreToolUse git-guard (protected branches, destructive ops, gh allowlist)
-                               and jira-guard (read-only Atlassian MCP tools)
+                               and jira-guard (read-only Atlassian MCP tools);
+                               telemetry.js collects token and duration metrics
 mcp/jira/README.md             read-only Jira MCP integration point
 templates/                     analysis, design, implementation-report, evaluation,
-                               escalation-report
+                               escalation-report, decision-record, brain-readme
 docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
+docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
 CLAUDE.md                      pointer for plugin developers (not loaded by plugin users)
-<workspace>/.runtime/<ticket-id>/  temporary artifacts + state.json (never committed)
+<workspace>/.brain/            the record: per-ticket state, journal, decisions, artifacts, metrics
 ```
 
 Model allocation: Analyzer/Designer/Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.
@@ -164,7 +190,7 @@ Judging whether the harness is worth investing in takes a handful of real ticket
 **Pick:** small, reproducible Bugs (or small Stories) with clear acceptance criteria, on the `base`, `gcet` or `gutech` line. Include at least one that touches a service **and** the UI.
 **Avoid:** hotfixes, OSOS, otc/cbfs, and anything urgent.
 
-Before deleting anything, copy `.runtime\<ticket>\` somewhere safe and record:
+The brain is the pilot's evidence: `.brain/tickets/<ticket>/` keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
 
 | Question | Answer |
 |---|---|
@@ -186,7 +212,7 @@ Multi-repo support is new and untested on real tickets; the repo selection and t
 
 ## Limitations (by design)
 
-- Read-only Jira: the end-of-run summary is not posted; artifacts stay in `.runtime/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
+- Read-only Jira: the end-of-run summary is not posted; the record stays in `.brain/tickets/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
 - Automatic PR creation requires an authenticated `gh`; otherwise the human opens each PR from a prefilled compare link.
 - No orchestration server, no database, no UI — the loop runs inside Claude Code.
 - PASS means "sufficient evidence for human review", not "guaranteed safe".

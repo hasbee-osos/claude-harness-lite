@@ -1,6 +1,6 @@
 ---
 name: workspace
-description: Multi-repository workspace model - how the harness finds the product repos under the session directory, runs git per repo, decides which repos a ticket touches, where runtime state lives, and the state.json schema. Use for every harness command and agent.
+description: Multi-repository workspace model - how the harness finds the product repos under the session directory, runs git per repo, decides which repos a ticket touches, and where the brain records the run. Use for every harness command and agent.
 ---
 
 # Workspace
@@ -9,7 +9,7 @@ The harness runs in a **workspace**: a parent folder that holds clones of the pr
 
 ```text
 <workspace>/                 ← Claude session directory
-├── .runtime/<ticket-id>/    ← harness state for the ticket (never inside a product repo)
+├── .brain/                  ← the brain: one folder per ticket (never inside a product repo)
 ├── claude_harness_lite/     ← the plugin (not a product repo)
 ├── sis-product-sis-admin-backend/
 ├── sis-product-sis-frontend/
@@ -36,49 +36,11 @@ The harness runs in a **workspace**: a parent folder that holds clones of the pr
 2. The **Designer** confirms the list, gives a change plan per repo, and names cross-repo contracts (API shape, DTO fields, error codes) that must stay consistent, plus any deploy/merge ordering between repos.
 3. **The human confirms the repos to change** before any branch is created. Only then are ticket branches created — one per changed repo, all with the **same branch name**.
 
-## Runtime state
+## The brain
 
-- Location: `<workspace>/.runtime/<ticket-id>/`. Before writing there, confirm it cannot be committed: if the workspace folder is itself inside a git repo, `git check-ignore -q .runtime` must succeed — otherwise stop and ask the human to ignore it.
-- Never commit `.runtime/`. Never store chain-of-thought.
+Every harness run records its state, decisions and artifacts in `<workspace>/.brain/` — one folder per ticket, durable across sessions. The layout, the `state.json` schema, the journal event vocabulary, the decision-record rules and the resume protocol all live in the **`brain`** skill. Read it before writing anything there.
 
-### `state.json` schema
+Two things matter here in the workspace:
 
-```json
-{
-  "ticket": "GSIS-12345",
-  "status": "ANALYZING | DESIGNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
-  "iteration": 1,
-  "max_iterations": 3,
-  "workspace": "C:/sis-workspace",
-  "flow": "A",
-  "source_branch": "base-development",
-  "branch": "base/bugfix/GSIS-12345-short-desc",
-  "repos": {
-    "sis-product-sis-admin-backend": { "role": "change", "branch_created": true },
-    "sis-product-sis-frontend":      { "role": "change", "branch_created": true }
-  },
-  "context_repos": ["sis-product-sis-student-service"],
-  "pr_targets": [
-    { "stage": 1, "targets": ["base-sandbox-qa"], "status": "OPEN" },
-    { "stage": 2, "targets": ["gcet-sandbox-qa", "gutech-sandbox-qa"], "status": "PENDING" }
-  ],
-  "prs": [
-    {
-      "repo": "sis-product-sis-frontend",
-      "stage": 1,
-      "target": "base-sandbox-qa",
-      "head": "base/bugfix/GSIS-12345-short-desc",
-      "resolve_branch": null,
-      "compare_link": "https://github.com/pbsgears/sis-product-sis-frontend/compare/…",
-      "url": null
-    }
-  ],
-  "analysis": "READY | NEEDS_INPUT",
-  "design": "READY | NEEDS_INPUT",
-  "implementation": "COMPLETE | BLOCKED",
-  "evaluation": "PASS | FAIL | INSUFFICIENT_EVIDENCE"
-}
-```
-
-- `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
-- A stage is done only when **every** changed repo's PRs for that stage are merged and the human confirms verification.
+- The brain sits at the **workspace root**, beside the repo clones — never inside a product repo. If the workspace folder is itself a git repo, `git check-ignore -q .brain` must succeed before writing; otherwise stop and ask the human to ignore it.
+- `state.json` `repos` is the list of repos this ticket may change. Every other repo is read-only context.
