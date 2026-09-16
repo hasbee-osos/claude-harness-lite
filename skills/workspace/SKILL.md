@@ -5,7 +5,7 @@ description: Multi-repository workspace model - how the harness finds the produc
 
 # Workspace
 
-The harness runs in a **workspace**: a parent folder that holds clones of the product repos (7 Spring Boot services + the Angular UI), the brain repo, and the plugin. Claude is started in that folder. One ticket may change several repos.
+The harness runs in a **workspace**: a parent folder that holds clones of the product repos (7 Spring Boot services + the Angular UI) and the brain repo. Claude is started in that folder. The harness plugin is installed at user level and does not live in the workspace; a maintainer's `claude-harness-lite` clone may sit there and is skipped. One ticket may change several repos.
 
 The workspace folder itself is **never a git repo** — it is a plain container, and its name is the developer's choice.
 
@@ -13,7 +13,7 @@ The workspace folder itself is **never a git repo** — it is a plain container,
 <workspace>/                 ← Claude session directory
 ├── .ignore                  ← keeps the brain out of default code searches
 ├── sis-brain/               ← the brain repo (clone; skipped as a product repo)
-├── claude_harness_lite/     ← the plugin (not a product repo)
+├── claude-harness-lite/     ← optional maintainer clone of the plugin (skipped: has .claude-plugin/)
 ├── sis-product-sis-admin-backend/
 ├── sis-product-sis-frontend/
 └── …
