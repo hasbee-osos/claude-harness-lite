@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "sis-harness",
+  "description": "SIS engineering harness",
+  "owner": { "name": "SIS Engineering" },
+  "plugins": [
+    {
+      "name": "engineering-harness",
+      "description": "Jira-driven engineering harness: analyze, design, implement, evaluate, PR.",
+      "source": "./"
+    }
+  ]
+}

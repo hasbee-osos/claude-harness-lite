@@ -44,7 +44,7 @@ claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com
 
 Start `claude`, run `/mcp`, select `atlassian`, and complete the browser login, choosing the right site. If the connection is refused, an Atlassian admin must allow the Rovo MCP Server. Details and other servers: `mcp/jira/README.md`. The plugin bundles no MCP server and no credentials.
 
-> **Jira is read-only in harness sessions.** The `jira-guard` hook blocks every Atlassian tool except a small list of read tools. It only works while the plugin is loaded, so don't use the Atlassian tools in sessions started without `--plugin-dir`. As a second safety net, decline any prompt to create, edit, comment on or transition an issue, and never choose "always allow" for atlassian tools.
+> **Jira is read-only in harness sessions.** The `jira-guard` hook blocks every Atlassian tool except a small list of read tools. It only works while the plugin is loaded, so don't use the Atlassian tools in sessions where the harness plugin is not installed or is disabled. As a second safety net, decline any prompt to create, edit, comment on or transition an issue, and never choose "always allow" for atlassian tools.
 
 **2. Clone the brain** (once per developer). A human creates an **empty private** GitHub repo for the team's record — e.g. `pbsgears/sis-brain` — then everyone clones it into their workspace:
 
@@ -55,17 +55,34 @@ git clone https://github.com/pbsgears/sis-brain.git
 
 The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use and commits them, and writes the workspace `.ignore` so the records stay out of code searches. It commits and pushes at every milestone from then on.
 
-**3. Start Claude in the workspace:**
+**3. Install the harness** (once per developer, user level, so it loads in every session):
+
+```powershell
+claude plugin marketplace add hasbee-osos/claude-harness-lite
+claude plugin install engineering-harness@sis-harness
+```
+
+This repo is its own marketplace (`.claude-plugin/marketplace.json`), so there is nothing else to register. The install is a copy of what is merged to `main`, never an unmerged branch. Check it with `claude plugin list`.
+
+**Getting harness updates** after changes are merged:
+
+```powershell
+claude plugin marketplace update sis-harness
+claude plugin update engineering-harness@sis-harness
+```
+
+**4. Start Claude in the workspace**, with no extra flags:
 
 ```powershell
 cd C:\sis-repos
-claude --plugin-dir "C:\sis-repos\claude_harness_lite"
-# or add a marketplace entry pointing at this repository
+claude
 ```
+
+Don't also pass `--plugin-dir` for an installed harness; two copies of the same plugin in one session can run each hook twice and leave it unclear which version is active. `--plugin-dir <your clone>` is only for harness maintainers testing unmerged changes. Disable the installed copy first with `claude plugin disable engineering-harness@sis-harness`, and enable it again afterwards.
 
 Keep the default permission mode, so each command is approved. If `/work` is not recognized, use `/engineering-harness:work`; the same applies to the other commands.
 
-**4. Smoke-test both guards** before the first real ticket:
+**5. Smoke-test both guards** before the first real ticket:
 
 - **Git guard:** pick a repo sitting on a protected branch (e.g. `base-sandbox-qa`) and ask Claude to run `git -C <that-repo-folder> commit --allow-empty -m guard-test`. It must be **blocked by engineering-harness git-guard**. If the commit goes through, stop and check that Node is on PATH and the plugin loaded. Undo a test commit with `git -C <repo> reset --soft HEAD~1`.
 - **Jira guard:** ask Claude to add a comment to a ticket. It must be **blocked by engineering-harness jira-guard**. Then ask it to read the ticket and its attachments; that must work. If a read is blocked, report it to the harness maintainers (the allowlists live in `hooks/scripts/jira-guard.js`).
