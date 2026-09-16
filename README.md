@@ -12,20 +12,19 @@ Jira → Analyzer (which repos?) → Designer (plan per repo) → human confirms
 
 ## Workspace
 
-The harness runs in a **workspace**: one parent folder holding the plugin, clones of all product repos, and the shared brain repo, with Claude started in that folder. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Analyzer works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
+The harness runs in a **workspace**: one parent folder holding clones of all product repos and the shared brain repo, with Claude started in that folder. The harness itself is **not** in the workspace: it is installed once as a Claude Code plugin (Setup, step 3) and then loads in every session. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Analyzer works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
 
 ```text
 C:\sis-repos\                            workspace folder (any name, any path)
 ├── .ignore                              keeps the brain out of code searches
 ├── sis-brain\                           the shared brain repo (a clone)
-├── claude_harness_lite\                 this plugin (skipped as a product repo)
 ├── sis-product-sis-admin-backend\
 ├── sis-product-sis-frontend\
 └── …the other services…
 ```
 
 - **Clone all product repos**, so the harness can follow a flow from the UI through every service.
-- The plugin repo has no GitHub remote yet, so **copy** `claude_harness_lite` in rather than cloning it.
+- **Don't copy or clone the harness into the workspace** to use it; install it (Setup, step 3). Only harness maintainers keep a clone of `claude-harness-lite`, anywhere they like. If it sits inside the workspace it is skipped as a product repo because it contains `.claude-plugin/`.
 - Repos should have **no uncommitted work you care about**. The harness never touches uncommitted changes; it stops and asks if a repo it needs to change is dirty.
 - **Clone the brain repo** into the workspace (see Setup). The harness also writes a workspace `.ignore` listing `sis-brain/`, which keeps harness records out of cross-repo code searches while leaving the record itself searchable.
 - Nothing needs gitignoring in the workspace: it is not a git repo, so there is no `.gitignore` to get wrong.
@@ -33,6 +32,18 @@ C:\sis-repos\                            workspace folder (any name, any path)
 `skills/workspace/SKILL.md` defines the model: repo discovery, `git -C` and where the brain lives; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
 
 ## Setup
+
+**One-time, per developer** — steps 1–3 below, then never again:
+
+| Step | What | Command |
+|---|---|---|
+| 1 | Connect Jira | `claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com/v2/mcp`, then `/mcp` login |
+| 2 | Clone the brain | `git clone https://github.com/pbsgears/sis-brain.git` inside the workspace |
+| 3 | Install the harness | `claude plugin marketplace add hasbee-osos/claude-harness-lite` then `claude plugin install engineering-harness@sis-harness` |
+
+**Every session:** `cd` into the workspace and run `claude`. No flags.
+
+**When the harness changes** (a PR is merged): `claude plugin marketplace update sis-harness` then `claude plugin update engineering-harness@sis-harness`.
 
 **Prerequisites:** Claude Code installed and logged in; `git` and **Node.js on PATH** (the safety hooks run on Node, and without it they silently do nothing); each repo's own build tools (JDK + Maven/Gradle, Node/npm), because the harness runs real tests; a Jira account on the team's Atlassian site.
 
@@ -55,14 +66,14 @@ git clone https://github.com/pbsgears/sis-brain.git
 
 The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use and commits them, and writes the workspace `.ignore` so the records stay out of code searches. It commits and pushes at every milestone from then on.
 
-**3. Install the harness** (once per developer, user level, so it loads in every session):
+**3. Install the harness** (one-time, per developer; user level, so it loads in every session and every folder):
 
 ```powershell
 claude plugin marketplace add hasbee-osos/claude-harness-lite
 claude plugin install engineering-harness@sis-harness
 ```
 
-This repo is its own marketplace (`.claude-plugin/marketplace.json`), so there is nothing else to register. The install is a copy of what is merged to `main`, never an unmerged branch. Check it with `claude plugin list`.
+A *marketplace* is just a list of installable plugins; this repo is its own one-plugin marketplace (`.claude-plugin/marketplace.json`, named `sis-harness`), so there is nothing else to set up. The first command registers it (one-time), the second installs the harness from it (one-time). The install is a copy of what is merged to `main`, never an unmerged branch. Check it with `claude plugin list`.
 
 **Getting harness updates** after changes are merged:
 
@@ -78,7 +89,7 @@ cd C:\sis-repos
 claude
 ```
 
-Don't also pass `--plugin-dir` for an installed harness; two copies of the same plugin in one session can run each hook twice and leave it unclear which version is active. `--plugin-dir <your clone>` is only for harness maintainers testing unmerged changes. Disable the installed copy first with `claude plugin disable engineering-harness@sis-harness`, and enable it again afterwards.
+Don't also pass `--plugin-dir` for an installed harness; two copies of the same plugin in one session can run each hook twice and leave it unclear which version is active. `--plugin-dir <path to your claude-harness-lite clone>` is only for harness maintainers testing unmerged changes. Disable the installed copy first with `claude plugin disable engineering-harness@sis-harness`, and enable it again afterwards.
 
 Keep the default permission mode, so each command is approved. If `/work` is not recognized, use `/engineering-harness:work`; the same applies to the other commands.
 
