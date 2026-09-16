@@ -14,6 +14,14 @@ Ticket: <ticket-id>
 
 <actual behavior>
 
+## Attachments
+
+| Attachment | Read | What it shows |
+|---|---|---|
+| <filename> | frames \| image \| document \| not read: <reason> | <`@ mm:ss` observations: screen, action, result, environment in the address bar — roles, never personal data> |
+
+<"None." if the ticket has no attachments. Note any mismatch between a recording and the written steps.>
+
 ## Repositories
 
 | Repo | Role | Why (evidence) |

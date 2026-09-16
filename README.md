@@ -68,7 +68,9 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 **4. Smoke-test both guards** before the first real ticket:
 
 - **Git guard:** pick a repo sitting on a protected branch (e.g. `base-sandbox-qa`) and ask Claude to run `git -C <that-repo-folder> commit --allow-empty -m guard-test`. It must be **blocked by engineering-harness git-guard**. If the commit goes through, stop and check that Node is on PATH and the plugin loaded. Undo a test commit with `git -C <repo> reset --soft HEAD~1`.
-- **Jira guard:** ask Claude to add a comment to a ticket. It must be **blocked by engineering-harness jira-guard**. Then ask it to read the ticket; that must work. If a read is blocked, add the blocked tool name to `READ_TOOLS` in `hooks/scripts/jira-guard.js`.
+- **Jira guard:** ask Claude to add a comment to a ticket. It must be **blocked by engineering-harness jira-guard**. Then ask it to read the ticket and its attachments; that must work. If a read is blocked, report it to the harness maintainers (the allowlists live in `hooks/scripts/jira-guard.js`).
+
+**Attachments need no setup.** On the first ticket with a screen recording the harness installs a pinned ffmpeg for itself under `~/.claude-harness/tools/` (about 80 MB, once per machine, via npm) unless `ffmpeg` is already on PATH. Downloads and frames stay in the OS temp folder, never in the brain or a repo — see `skills/jira-attachments/SKILL.md`.
 
 ## Commands
 
@@ -184,7 +186,7 @@ Point node_exporter at `sis-brain/metrics` with `--collector.textfile.directory`
 
 The `git-guard` PreToolUse hook blocks destructive operations (force-push, `reset --hard`, `clean -f`, …), git commit/push/merge on protected branches, and pushes whose destination is a protected branch (`HEAD:gcet-qa`, `--all`), for both the Bash and PowerShell tools. It checks the branch of the repo each git command actually targets (`git -C`, `cd`/`Set-Location`), so it works from the workspace folder, and denies git write commands whose repo it cannot determine. The harness's own record repo is the one exception: a repo whose root holds a `.harness-brain` marker may be committed and pushed to on any branch, because writing the record is the point. Force-push and history rewriting stay blocked there too, and the marker — not the folder name — is what grants it, so no product repo can inherit it. It also restricts the GitHub CLI to reads plus `gh pr create` — merging, approving, commenting, editing PRs, triggering workflows, and write `gh api` calls are denied, because `gh` runs with the human's full GitHub permissions. Both guards have self-tests (`node hooks/scripts/git-guard.selftest.js`). The branching strategy — flows, branch naming, PR targets, and the protected-branch list the hook reads — is defined only in `skills/git-workflow/SKILL.md` (source PDF and repository analysis under `references/`). To change the strategy, edit that file. The harness never merges, never approves its own PR, never bypasses checks.
 
-A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers it allows only the read tools in its allowlist and denies everything else (see `mcp/jira/README.md`).
+A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers it allows only the read tools in its allowlist, lets the generic `executeRead` through only for the named read operations the harness needs (comments, attachment downloads), and denies everything else (see `mcp/jira/README.md`; self-test `node hooks/scripts/jira-guard.selftest.js`).
 
 ## Architecture
 
@@ -197,6 +199,7 @@ commands/                      /work /analyze /design /implement /evaluate /pr /
 skills/                        architecture, springboot, angular, postgresql, testing,
                                engineering-standards, repository-analysis,
                                characterization-testing, git-workflow, workspace, brain,
+                               jira-attachments (download attachments, frames from recordings),
                                ground-rules (the harness rules every command/agent reads first)
 hooks/                         PreToolUse git-guard (protected branches, destructive ops, gh allowlist)
                                and jira-guard (read-only Atlassian MCP tools);
@@ -242,6 +245,7 @@ Multi-repo support is new and untested on real tickets; the repo selection and t
 ## Limitations (by design)
 
 - Read-only Jira: the end-of-run summary is not posted; the record stays in `sis-brain/tickets/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
+- Screen recordings are read as still frames (up to 40 per video, taken at on-screen changes): no audio, and something shown for under a second can be missed.
 - Automatic PR creation requires an authenticated `gh`; otherwise the human opens each PR from a prefilled compare link.
 - No orchestration server, no database, no UI — the loop runs inside Claude Code.
 - PASS means "sufficient evidence for human review", not "guaranteed safe".

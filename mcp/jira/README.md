@@ -8,9 +8,10 @@ The harness expects a **read-only** Jira MCP server configured by the user or th
 
 - get a Jira issue
 - read description
-- read comments
+- read comments (`listJiraIssueComments` via `executeRead`)
 - read relevant metadata
 - read linked issues (where supported)
+- download attachments (`downloadJiraIssueAttachment` via `executeRead`) and extract frames from screen recordings — see `skills/jira-attachments/SKILL.md`
 
 ## How to configure
 
@@ -55,11 +56,11 @@ Or register it with `claude mcp add`. Use your organization's approved Jira MCP 
 
 ## Read-only guard
 
-`hooks/scripts/jira-guard.js` (PreToolUse, matcher `mcp__.*`) enforces read-only Jira on the Claude Code side. On any MCP server whose name contains `atlassian` or `jira` (including the claude.ai Atlassian connector), it allows only the tools in its `READ_TOOLS` allowlist. Everything else is denied: create, edit, comment, transition, worklog, Confluence, and any tool it doesn't recognize. Allowed tools still go through the normal permission prompt.
+`hooks/scripts/jira-guard.js` (PreToolUse, matcher `mcp__.*`) enforces read-only Jira on the Claude Code side. On any MCP server whose name contains `atlassian` or `jira` (including the claude.ai Atlassian connector), it allows only the tools in its `READ_TOOLS` allowlist. The generic `executeRead` tool is allowed only for the operation names in `READ_OPERATIONS` (`listJiraIssueComments`, `downloadJiraIssueAttachment`). `executeWrite` and `executeDestructive` are always denied. Everything else is denied: create, edit, comment, transition, worklog, Confluence, and any tool or operation it doesn't recognize. Allowed tools still go through the normal permission prompt. Self-test: `node hooks/scripts/jira-guard.selftest.js`.
 
 Limits:
 - It protects only Claude sessions with this plugin loaded. The OAuth login carries your full Jira permissions, so any other client using it can still write. For read-only access enforced on the Jira side, use a Jira account that has only Browse permissions.
-- The allowlist was written before the server was connected. After connecting, check which tools the harness actually needs. If a read tool is blocked, add its name to `READ_TOOLS`. Never add write tools.
+- The allowlist was written before the server was connected. After connecting, check which tools the harness actually needs. If a read tool is blocked, add its name to `READ_TOOLS`; if a read operation run through `executeRead` is blocked, confirm with `discover` that its `executeTool` is `executeRead`, then add it to `READ_OPERATIONS`. Never add write tools or operations. This is a harness change for the maintainers, not a per-developer step.
 
 ## If no Jira MCP is configured
 
@@ -68,8 +69,7 @@ The harness degrades gracefully: `/work` and `/analyze` ask the user to paste th
 ## Extension points (not implemented yet — do not fake them)
 
 - Jira **write** capability: posting the final run summary and artifacts as comments, updating status/labels
-- Attachments, if the installed MCP supports them
 - Git provider MCP for PR creation (the harness currently uses `gh` if authenticated, otherwise a prefilled compare link for the human)
 - CI/CD and other enterprise systems
 
-If the installed MCP does not support an operation (e.g. attachments), the harness documents the limitation and continues with the local record in `sis-brain/tickets/<ticket-id>/`.
+If the installed MCP does not support an operation, the harness documents the limitation and continues with the local record in `sis-brain/tickets/<ticket-id>/`.
