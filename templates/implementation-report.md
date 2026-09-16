@@ -12,7 +12,7 @@ Branch: <ticket branch, same in every changed repo>
 
 ### Tests
 
-- <new/modified tests and what they pin: regression test + characterization tests>
+- <new/modified tests and what they pin: regression test (bug) or one test per AC-n (feature), plus characterization tests>
 
 ### Verification Evidence
 
@@ -32,6 +32,12 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 ## <repo-folder>
 
 …
+
+## Acceptance Criteria (feature)
+
+| AC | Implemented in | Test / manual step | Result |
+|---|---|---|---|
+| AC-1 | <repo/path> | <test name or steps> | <actual executed result> |
 
 ## Cross-Repo Consistency
 

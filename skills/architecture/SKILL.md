@@ -19,9 +19,10 @@ Use this skill when analyzing impact or designing changes.
 
 ## Principle
 
-Favor **appropriate simplicity**. This harness exists primarily for bug fixes:
+Favor **appropriate simplicity**. This harness changes an existing product, for bugs and features alike:
 
-- Prefer the **smallest safe architectural change**.
+- Prefer the **smallest safe architectural change**; a feature extends the existing services, entities and components before it adds new ones.
 - Do not introduce architectural changes merely because they are technically interesting.
 - Do not invent new patterns when the existing codebase already has an established one — follow existing conventions.
 - For a bug fix, changing architecture is almost always out of scope; document it as a recommendation instead.
+- For a feature, a new service boundary, new async flow or new shared table is a design decision that needs its own decision record with the alternatives rejected — and usually a human conversation first.

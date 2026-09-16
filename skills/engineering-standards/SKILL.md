@@ -1,11 +1,11 @@
 ---
 name: engineering-standards
-description: Standards for small focused changes, readability, backward compatibility, security, error handling, and avoiding unrelated refactoring. The default principle is the smallest change that safely solves the problem. Use for all implementation work.
+description: Standards for small focused changes, readability, backward compatibility, security, error handling, and avoiding unrelated refactoring. The default principle is the smallest change that completely and safely delivers the ticket. Use for all implementation work.
 ---
 
 # Engineering Standards
 
-Default principle: **make the smallest change that safely solves the problem.**
+Default principle: **make the smallest change that completely and safely delivers the ticket** — a narrow fix for a bug; for a feature, everything its acceptance criteria need and nothing they don't.
 
 ## Project conventions — read first
 
@@ -17,7 +17,7 @@ Deviating from a convention needs an explicit, recorded reason. Breaking one is 
 
 ## Standards
 
-- **Small focused changes** scoped to the Jira ticket. No unrelated refactoring, reformatting, or drive-by fixes — document discovered issues as findings/recommendations instead.
+- **Focused changes** scoped to the Jira ticket and, for a feature, to its confirmed acceptance criteria. No speculative options or configurability the criteria don't ask for. No unrelated refactoring, reformatting, or drive-by fixes — document discovered issues as findings/recommendations instead.
 - **Readability & maintainability**: match existing code style; no cleverness; no new dependencies unless demonstrably required.
 - **Backward compatibility**: preserve existing APIs, DB semantics, and behavior unless the ticket explicitly requires a change.
 - **Security**: never expose, print, commit, or hardcode secrets/credentials; never bypass authentication or weaken security controls to make tests pass; never disable security checks without explicit human authorization.

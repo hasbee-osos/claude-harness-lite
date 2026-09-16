@@ -1,6 +1,7 @@
 # Technical Design
 
 Ticket: <ticket-id>
+Work type: bug | feature
 
 ## Repositories
 
@@ -16,8 +17,8 @@ Corrections to the analysis's repo list: <or "None.">
 
 ## Decisions
 
-- **Following:** <locked decision IDs this design is built on, e.g. D-1 (flow), D-2 (root cause)>
-- **New:** <one line per decision this design locks — fix approach, test strategy, any convention deviation — each written in full into `decisions.md` using `templates/decision-record.md`>
+- **Following:** <locked decision IDs this design is built on, e.g. D-1 (flow), D-2 (root cause or scope)>
+- **New:** <one line per decision this design locks — fix or design approach, test strategy, contract or schema choices, any convention deviation — each written in full into `decisions.md` using `templates/decision-record.md`>
 - **Superseding:** <locked decision this design overturns, with the reason; or "None.">
 
 ## Cross-Repo Contracts
@@ -39,6 +40,12 @@ Steps:
 ### <repo-folder>
 
 …
+
+## Acceptance Criteria Coverage (feature)
+
+| AC | Delivered by (repo → change) | Proven by (test or manual step) |
+|---|---|---|
+| AC-1 | <repo → class/component/migration> | <test name and level, or exact manual step> |
 
 ## Regression Surface
 

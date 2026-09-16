@@ -13,6 +13,7 @@ PASS | FAIL | INSUFFICIENT_EVIDENCE
 | Cross-repo consistency | PASS \| FAIL \| N/A | <one line> |
 | Project conventions | PASS \| FAIL | <guidelines checked; unjustified breaches are blocking> |
 | Locked decisions | PASS \| FAIL | <decisions checked; an unsuperseded contradiction is blocking> |
+| Ticket outcome | PASS \| FAIL \| INSUFFICIENT_EVIDENCE | <bug: fix proven by a regression test; feature: every AC met with evidence, no scope beyond it> |
 
 ## Blocking Findings
 
@@ -35,6 +36,12 @@ PASS | FAIL | INSUFFICIENT_EVIDENCE
 | ID | Decision | Followed? | Note |
 |---|---|---|---|
 | D-<n> | <one line> | YES \| SUPERSEDED by D-<n> \| **CONTRADICTED** | <where, with file reference> |
+
+## Acceptance Criteria Checked (feature)
+
+| AC | Met? | Evidence |
+|---|---|---|
+| AC-1 | YES \| NO \| NOT EVIDENCED | <test run / command output / manual step result> |
 
 ## Evidence
 

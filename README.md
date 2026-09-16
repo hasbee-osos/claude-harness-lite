@@ -1,6 +1,6 @@
 # Claude Code Engineering Harness
 
-A minimalist, reusable **Claude Code plugin** for enterprise **bug-fix engineering** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges.
+A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a design and a test per criterion (`skills/work-types/SKILL.md`).
 
 ```
 /work ABC-123
@@ -129,7 +129,7 @@ On PASS it pushes each branch and gives one compare link per repo, with the PR d
 
 Run manually:
 - **`/pr <ticket>` for stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, this raises the customer sandbox PRs for each repo. `/work` stops after stage 1, because days can pass between stages.
-- **The single-stage commands**, only when wanted: to re-run one stage (e.g. `/evaluate` after a manual fix), or to review each artifact before moving on. Running `/analyze <ticket>` alone is a cheap way to check the root cause and repo list before a full run.
+- **The single-stage commands**, only when wanted: to re-run one stage (e.g. `/evaluate` after a manual fix), or to review each artifact before moving on. Running `/analyze <ticket>` alone is a cheap way to check the root cause (bug) or the scope and acceptance criteria (story), and the repo list, before a full run.
 
 Re-running `/work <ticket>` after an interruption — even days later, in a new session or on another machine — resumes from the brain: it prints what is done, which decisions are locked, what the human already confirmed and what happens next, then continues from there. It never re-asks a confirmation already recorded, and never redoes a stage whose artifact exists.
 
@@ -137,9 +137,9 @@ Claude never merges, approves, force-pushes, pushes to protected branches, raise
 
 ## Agents
 
-- **Analyzer** — understands the ticket against the actual code across the workspace; marks each repo as change or context; produces a root-cause analysis with evidence. Read-only.
+- **Analyzer** — understands the ticket against the actual code across the workspace; marks each repo as change or context; for a bug, finds the root cause; for a story, the gap, scope and numbered acceptance criteria — and flags a story too big for one run. Read-only.
 - **Designer** — independently verifies the analysis; produces the plan per repo, the cross-repo contracts, the **regression surface**, and a **risk-based test strategy**. Read-only.
-- **Implementor** — implements the design in the confirmed repos only, applies **characterization testing** in low-coverage areas, adds the regression test, runs risk-proportionate verification in each repo, records **actual evidence** (commands + real results).
+- **Implementor** — implements the design in the confirmed repos only, applies **characterization testing** in low-coverage areas, adds the regression test (bug) or a test per acceptance criterion (story), runs risk-proportionate verification in each repo, records **actual evidence** (commands + real results).
 - **Evaluator** — independent quality gate over the whole work product, per repo and cross-repo; read-only; issues exactly one verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`); only blocking findings trigger another iteration.
 
 ## Evaluator loop
@@ -179,7 +179,7 @@ sis-brain/                           committed:
 Four properties make it worth keeping:
 
 - **Resumable.** `next_action` is written in plain words on every transition, so any session can pick a ticket up — `/work <ticket>` to continue, `/brain <ticket>` to just look.
-- **Traceable.** Decisions are numbered, justified, evidence-backed and **locked**. A later stage that contradicts one without superseding it is a blocking evaluator finding. When a bug is reopened months later, `decisions.md` says why the fix was built this way and which alternatives were rejected.
+- **Traceable.** Decisions are numbered, justified, evidence-backed and **locked**. A later stage that contradicts one without superseding it is a blocking evaluator finding. When a ticket is reopened or extended months later, `decisions.md` says why the change was built this way and which alternatives were rejected.
 - **Complete.** Iteration artifacts are numbered, never overwritten, so what the evaluator caught in round 1 survives round 2.
 - **Shared.** Per-ticket folders mean two developers' sessions never touch the same file, so everyone pushes to `main` directly — no PRs, no review gate, no conflicts in practice.
 
@@ -216,6 +216,7 @@ commands/                      /work /analyze /design /implement /evaluate /pr /
 skills/                        architecture, springboot, angular, postgresql, testing,
                                engineering-standards, repository-analysis,
                                characterization-testing, git-workflow, workspace, brain,
+                               work-types (what each stage does for a bug vs a feature),
                                jira-attachments (download attachments, frames from recordings),
                                input-packets (QA / SME questions as a paste-ready Jira comment),
                                ground-rules (the harness rules every command/agent reads first)
@@ -247,10 +248,11 @@ The brain is the pilot's evidence: `sis-brain/tickets/<ticket>/` keeps the decis
 | Ticket / type | |
 | Correct flow and branch proposed? | |
 | Correct repos identified (none missing, none extra)? | |
-| Root cause right? (analysis) | |
+| Root cause right (bug) / scope and acceptance criteria right (story)? (analysis) | |
 | Plan sensible and minimal? (design) | |
 | Code quality — would you have merged it as-is? | |
 | Tests meaningful and actually run in each repo? | |
+| Every acceptance criterion actually proven (story)? | |
 | Evaluator verdict right? Any false PASS/FAIL? | |
 | Iterations used / escalated? | |
 | Times you had to step in, and why | |

@@ -7,7 +7,7 @@ description: The brain - the team's shared git repo, cloned into the workspace a
 
 The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, and why. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
 
-It replaces the old `.runtime/` folder. That folder was declared temporary scratch, so iteration history was overwritten and the reasoning behind a fix was lost when the session ended. **If a ticket is reopened, the brain is the answer to "why was it done this way?".**
+It replaces the old `.runtime/` folder. That folder was declared temporary scratch, so iteration history was overwritten and the reasoning behind a change was lost when the session ended. **If a ticket is reopened or extended, the brain is the answer to "why was it done this way?".**
 
 ## Layout
 
@@ -78,6 +78,7 @@ This record is pushed to GitHub and read by the whole team, so the list is not a
   "iteration": 2,
   "max_iterations": 3,
   "workspace": "C:/sis-workspace",
+  "work_type": "bug | feature",
   "flow": "A",
   "source_branch": "base-development",
   "branch": "base/bugfix/GSIS-12345-short-desc",
@@ -177,11 +178,11 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 **What must become a decision record**
 
-- The flow, branch name and source branch (`git-workflow`).
+- The work type, flow, branch name and source branch (`work-types`, `git-workflow`).
 - The set of repos to change, and why each other repo is context only.
-- The root cause, once the Analyzer is confident in it.
-- The fix approach, and the alternatives rejected.
-- The test strategy — what proves the bug is fixed, and what protects the regression surface.
+- **bug:** the root cause, once the Analyzer is confident in it. **feature:** the scope — acceptance criteria in, explicitly out, assumptions — once confirmed; and a slicing decision or a recorded override when a story is too big.
+- The fix or design approach, and the alternatives rejected; for a feature, also each new contract or schema choice worth defending later.
+- The test strategy — what proves the bug is fixed or each acceptance criterion is met, and what protects the regression surface.
 - **Any deviation from a team convention**, with the justification (`engineering-standards`).
 - The evaluator's verdict, with its reason.
 
@@ -196,7 +197,7 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 `index.jsonl` — one appended line per ticket milestone (started, verdict, closed, escalated), so `/brain` can list recent work without opening every folder:
 
 ```json
-{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
+{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","work_type":"bug","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
 ```
 
 `current.json` — overwritten, not appended, before every agent dispatch, so the telemetry collector can attribute token usage to the right ticket and stage:

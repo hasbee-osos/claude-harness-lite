@@ -22,6 +22,7 @@ Use this skill when defining or executing verification.
   - Repository/SQL/transaction/entity → integration test against an isolated real PostgreSQL instance where practical
   - Angular UI → frontend tests + targeted manual verification
   - API contract change → verify the API/integration boundary
+- **Prove the ticket.** A bug needs a regression test that fails without the fix. A feature needs at least one test per acceptance criterion (`AC-n`), at the lowest level that really proves it; a criterion only a person can verify gets exact manual steps and a recorded result.
 - Run existing tests related to the affected area before and after the change.
 - Avoid: testing mocks instead of behavior, snapshot tests of generated noise, duplicating what an integration test already proves.
 

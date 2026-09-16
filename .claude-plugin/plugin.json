@@ -3,12 +3,12 @@
   "name": "engineering-harness",
   "displayName": "Claude Code Engineering Harness",
   "version": "0.1.0",
-  "description": "Minimalist enterprise bug-fix engineering harness: Jira-driven analyze/design/implement/evaluate workflow with independent quality gate, bounded iteration, and human-controlled merge.",
+  "description": "Minimalist enterprise engineering harness for Jira bugs and features: analyze/design/implement/evaluate workflow with independent quality gate, bounded iteration, and human-controlled merge.",
   "author": {
     "name": "SIS Engineering"
   },
   "keywords": [
-    "bug-fix",
+    "bug-fix", "user-stories",
     "jira",
     "engineering",
     "spring-boot",
