@@ -4,6 +4,17 @@
   "displayName": "Claude Code Engineering Harness",
   "version": "0.1.0",
   "description": "Minimalist enterprise bug-fix engineering harness: Jira-driven analyze/design/implement/evaluate workflow with independent quality gate, bounded iteration, and human-controlled merge.",
-  "keywords": ["bug-fix", "jira", "engineering", "spring-boot", "angular", "postgresql", "code-review"],
+  "author": {
+    "name": "SIS Engineering"
+  },
+  "keywords": [
+    "bug-fix",
+    "jira",
+    "engineering",
+    "spring-boot",
+    "angular",
+    "postgresql",
+    "code-review"
+  ],
   "license": "MIT"
 }
