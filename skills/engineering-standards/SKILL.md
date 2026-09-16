@@ -7,6 +7,14 @@ description: Standards for small focused changes, readability, backward compatib
 
 Default principle: **make the smallest change that safely solves the problem.**
 
+## Project conventions — read first
+
+[`references/sis-development-guidelines.md`](references/sis-development-guidelines.md) **is** the team's development guidelines — maintained as Markdown in this repo and growing continuously (see `docs/maintaining-guidelines.md` to propose a change).
+
+**Read it before designing, implementing or evaluating a change**, and follow it over any generic best practice. It covers database and Liquibase rules, base entity/service/DTO classes, authorization annotations, deletion and usage checks, common frontend components, translatable error handling, GMT+0 date handling, logging, notification templates, business config and code hygiene.
+
+Deviating from a convention needs an explicit, recorded reason. Breaking one is a blocking finding for the Evaluator, even when the code works and the tests pass.
+
 ## Standards
 
 - **Small focused changes** scoped to the Jira ticket. No unrelated refactoring, reformatting, or drive-by fixes — document discovered issues as findings/recommendations instead.

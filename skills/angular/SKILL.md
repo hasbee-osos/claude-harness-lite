@@ -7,6 +7,8 @@ description: Angular frontend knowledge - components, services, routing, forms, 
 
 Use this skill when the change touches the Angular frontend.
 
+The team's frontend conventions — common components (tables, headers, side drawers, buttons), inline-edit bulk save/delete, expandable child tables, delete/cancel confirmation dialogs, active-status toggles, device-time conversion, no `console.log`, no commented-out code — are in `engineering-standards`, [`references/sis-development-guidelines.md`](../engineering-standards/references/sis-development-guidelines.md). Read it before changing frontend code.
+
 ## Understand before changing
 
 - Components, services, and module organization used in this project

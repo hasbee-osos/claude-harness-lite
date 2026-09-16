@@ -133,6 +133,7 @@ A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers
 ## Extending
 
 - Add project skills under `skills/<name>/SKILL.md`.
+- The team's development guidelines live as Markdown under `skills/*/references/` and are read on every ticket — see `docs/maintaining-guidelines.md` before changing a rule.
 - Add MCP integrations per `mcp/jira/README.md` (Jira write, Git provider, CI/CD).
 - Adjust protected branches in `skills/git-workflow/SKILL.md`; destructive patterns in `hooks/scripts/git-guard.js`.
 - Tune agent models/effort in `agents/*.md` frontmatter.

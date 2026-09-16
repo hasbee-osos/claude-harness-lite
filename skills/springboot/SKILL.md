@@ -7,6 +7,10 @@ description: Practical Spring Boot enterprise knowledge - controllers, services,
 
 Use this skill when the change touches Spring Boot backend code.
 
+**Read before changing or reviewing Java code:**
+- [`references/java-code-review-guidelines.md`](references/java-code-review-guidelines.md) — the team's Java review criteria: structure and readability, business logic placement, maintainability, error handling and logging, security, performance.
+- `engineering-standards`, whose [`references/sis-development-guidelines.md`](../engineering-standards/references/sis-development-guidelines.md) carries the **project-specific** rules that override generic Java advice: base entity/service/DTO classes, constructor injection, `@PreAuthorizeGrant`, Liquibase, `preDelete`/usage checks, `GearsException` error handling, `DateUtils`, `@Slf4j`.
+
 ## Understand before changing
 
 - Controllers → services → repositories layering; dependency injection style used in this codebase

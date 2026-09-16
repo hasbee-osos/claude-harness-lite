@@ -7,6 +7,8 @@ description: PostgreSQL knowledge - SQL, schema, indexes, constraints, transacti
 
 Use this skill when the change touches SQL, schema, migrations, or database behavior.
 
+**Every schema change in this product is a new Liquibase script** — table naming and mandatory columns, the foreign-key `preConditions` pattern, script numbering and folder, and column-type rules are in `engineering-standards`, [`references/sis-development-guidelines.md`](../engineering-standards/references/sis-development-guidelines.md). Read it before touching the schema.
+
 ## Treat database changes as potentially high-risk
 
 - Schema changes and migrations: forward compatibility, rollback story, locking implications (`ALTER TABLE` locks), downtime risk

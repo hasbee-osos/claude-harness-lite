@@ -119,3 +119,4 @@ Before deleting anything, copy `.runtime\<ticket>\` somewhere safe and fill in:
 - No automatic PR creation — compare links only.
 - Multi-repo support is new and untested on real tickets; the repo-selection and cross-repo checks are exactly what the pilot should judge.
 - The branching rules come from `skills/git-workflow/SKILL.md`. If Claude's proposal disagrees with how the team works, say so and note it in the feedback.
+- The development guidelines the agents follow (database, Liquibase, base classes, authorization, common components, error handling, dates) live in `skills/engineering-standards/references/sis-development-guidelines.md`. If a rule there is wrong, outdated or missing, that's a finding worth reporting — see `docs/maintaining-guidelines.md`.

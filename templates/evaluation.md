@@ -11,6 +11,7 @@ PASS | FAIL | INSUFFICIENT_EVIDENCE
 |---|---|---|
 | <repo-folder> | PASS \| FAIL \| INSUFFICIENT_EVIDENCE | <one line> |
 | Cross-repo consistency | PASS \| FAIL \| N/A | <one line> |
+| Project conventions | PASS \| FAIL | <guidelines checked; unjustified breaches are blocking> |
 
 ## Blocking Findings
 

@@ -10,6 +10,10 @@ Ticket: <ticket-id>
 
 Corrections to the analysis's repo list: <or "None.">
 
+## Conventions That Apply
+
+- <project guidelines this change must follow: base classes, `@PreAuthorizeGrant`, Liquibase script, common components, error handling, date handling, … — with the rule's source>
+
 ## Cross-Repo Contracts
 
 - <endpoint / DTO field / error code / shared DB object that both sides must agree on, or "None — single repo.">
