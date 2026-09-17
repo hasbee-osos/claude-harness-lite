@@ -14,4 +14,4 @@ Input: `$ARGUMENTS` (Jira ticket ID or URL). Read the `ground-rules`, `workspace
 4. Record **Analysis written** (`brain`).
 5. Present a short summary of the analysis to the user, including the repos marked change vs context.
 
-**Stop here.** No design, no implementation. If the analyzer returns `NEEDS_INPUT`, write the input packet (`input-packets`) and surface the open questions and the packet path to the human.
+**Stop here.** No design, no implementation. Settle the analysis's questions first (`input-packets` → "The bar"): lock assumptions as decisions and ask the developer the questions marked `developer` in the terminal. Only if a QA or SME question passes the bar, write the one short packet (`input-packets`) and show it and its path.

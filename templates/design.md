@@ -20,6 +20,7 @@ Corrections to the analysis's repo list: <or "None.">
 - **Following:** <locked decision IDs this design is built on, e.g. D-1 (flow), D-2 (root cause or scope)>
 - **New:** <one line per decision this design locks — fix or design approach, test strategy, contract or schema choices, any convention deviation — each written in full into `decisions.md` using `templates/decision-record.md`>
 - **Superseding:** <locked decision this design overturns, with the reason; or "None.">
+- **Assumptions:** <anything new this design settles without asking anyone, with its basis — each locked as a decision and listed in the PR; or "None.">
 
 ## Cross-Repo Contracts
 

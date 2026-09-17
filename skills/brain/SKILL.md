@@ -71,7 +71,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 
 ### Input packets
 
-When a stage stops on questions (`input-packets`), record with that stage: `artifacts.qa_packet` or `artifacts.sme_packet` set to the packet filename; `status: NEEDS_INPUT`; `blocked_on: "answers to <packet> Q1–Qn"`; `next_action: "Developer posts <packet> as a Jira comment on <ticket>; when answered, run /work <ticket>"`; and an `input_requested` event. Questions only a developer can answer get `audience: developer` and `packet: null`. On **Answers received**, append `human_confirmed` with `what: "<packet> answers"` and the confirmed values, then `input_received`, and clear `blocked_on`.
+A packet is a last resort (`input-packets`), so most questions never stop a run: an assumption is recorded as a decision titled `Assumption: …`, and a developer answer in the terminal as `human_confirmed`. When a stage does stop on a packet, record with that stage: `artifacts.qa_packet` or `artifacts.sme_packet` set to the packet filename; `status: NEEDS_INPUT`; `blocked_on: "answers to <packet> Q1–Qn"`; `next_action: "Developer posts <packet> as a Jira comment on <ticket>; when answered, run /work <ticket>"`; and an `input_requested` event. A run that stops only because the developer is not available to answer gets `audience: developer` and `packet: null`. On **Answers received**, append `human_confirmed` with `what: "<packet> answers"` and the confirmed values, then `input_received`, and clear `blocked_on`.
 
 ### Index lines
 

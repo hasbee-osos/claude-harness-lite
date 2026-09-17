@@ -132,7 +132,7 @@ It stops and waits for the human when:
 - The flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
 - The repos to change need confirmation. No branch is created before that.
 - A repo to change has uncommitted changes, or Jira can't be read.
-- The Analyzer or Designer returns `NEEDS_INPUT`. The harness writes a paste-ready Jira comment with the questions to the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
+- A question only QA or the SME can answer is still open. This is a last resort: the harness first searches the ticket, related tickets, attachments and the code, records safe assumptions (listed in the PR for QA to verify), and asks you in the terminal what a developer can answer. Only a blocking question that survives all of that goes into one short paste-ready Jira comment (at most 3 questions) in the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
 - 3 evaluation rounds fail. An escalation report is written.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 

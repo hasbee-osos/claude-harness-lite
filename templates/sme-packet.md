@@ -1,30 +1,9 @@
-<!-- SME packet: pasted by a developer as a Jira comment on a Story / Task / Feature. Rules in skills/input-packets. Delete this line and every <placeholder>. -->
-**Questions for the product owner / SME: <one line, e.g. "business rules needed before design">**
+<!-- SME packet: pasted by a developer as a Jira comment on a Story / Task / Feature. Only when the bar in skills/input-packets is met. At most 3 questions, about 120 words. Delete this line and every <placeholder>. -->
+**<N> question(s) before we build this — reply by number, "OK" accepts the ★ option**
 
-**Summary**
-<2–4 sentences in plain language: what the story asks for as we understand it, what already exists in the product today, and where the requirement is open. No code.>
+<One sentence of context in plain language, e.g. "Offering-level rules can differ from the module master; we need to know which one wins.">
 
-**How it works today**
-* <current behaviour, by screen and role, that the answers affect>
-
-**Please confirm or answer**
-1. **<Business rule question>** — <one clause on why it matters>
-   * (a) <option>
-   * (b) <option>
-   * (c) other: ______
-2. **<Scope question>** — <why>. In scope / Out of scope
-3. **Examples** — please fill in the expected result:
-
-   | Scenario | Expected result |
-   |---|---|
-   | <concrete case, e.g. "applicant rejected the invitation, schedule is cancelled"> | |
-   | <edge case> | |
-
-<Only if the story is too big for one run (work-types): **Proposed split** — please confirm, or tell us to build it as one:
-| Slice | Delivers (AC) | Order |
-|---|---|---|
-| <slice 1> | AC-1, AC-2 | first |>
-
-**Acceptance criteria we will build and test against** — please correct anything wrong:
-* <criterion 1>
-* <criterion 2>
+1. **<Business rule question>** — <why, ≤10 words>
+   (a) <option> ★ · (b) <option> · (c) other: ___
+2. **<Scope question>** — <why>. In scope ★ / Out of scope
+3. **<Example to confirm>:** <concrete scenario> → <expected result we will build> ★. OK / correct it: ___

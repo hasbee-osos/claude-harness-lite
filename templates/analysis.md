@@ -19,7 +19,7 @@ Work type: bug | feature  <!-- per work-types; delete the sections marked for th
 
 | ID | Criterion | Source |
 |---|---|---|
-| AC-1 | <testable statement> | ticket \| draft — confirm with SME |
+| AC-1 | <testable statement> | ticket \| draft — <basis>; developer confirms |
 
 ## Attachments
 
@@ -65,9 +65,21 @@ Size: <fits one run | too big — proposed slices below, per work-types>
 
 - <`<repo>/<path>`, symbols, tests that support the conclusions (as of `origin/<source_branch>`)>
 
-## Open Questions
+## Assumptions
 
-<questions or "None.">
+<What was settled without asking anyone. Each becomes a locked decision and is listed in the PR for QA to verify. "None." if none.>
+
+| Assumption | Basis | If wrong |
+|---|---|---|
+| <what we will build or treat as true> | <existing behaviour, sibling feature, ticket wording, convention — with evidence> | <what would change> |
+
+## Questions
+
+<Only questions that pass the bar in input-packets: at most 3 for QA or the SME, one round for the whole ticket. "None." if none.>
+
+| # | Question | Audience | Why it blocks | Looked in |
+|---|---|---|---|---|
+| 1 | <question> | qa \| sme \| developer | <different answers → different build> | <ticket, comments, GSIS-… found by JQL, code and history, tests> |
 
 ## Status
 

@@ -42,10 +42,11 @@ Define a verification strategy proportional to actual risk. Do not require every
 - Favor the smallest change that completely and safely delivers the ticket: a narrow fix for a bug; for a feature, everything its acceptance criteria need and nothing they don't, following existing patterns and common components. Do not introduce architectural changes merely because they are interesting.
 - Do not implement anything. Do not modify any file.
 - If the analysis is wrong or incomplete, correct it in the design and note the correction.
+- **Do not open a new round of questions** for what you can settle from the code, the locked decisions or a safe assumption (`input-packets` → "The bar"). Record new assumptions under **Assumptions**. Raise a question to QA or the SME only for a new blocker that passes the bar and could not have been seen at analysis.
 
 ## Output
 
-Return a single design artifact in your final message, exactly following `templates/design.md` (Repositories / Conventions / Decisions / Cross-Repo Contracts / Change per repository / Acceptance Criteria Coverage for a feature / Regression Surface / Tests per repository / Risk / Status). The orchestrator will write it to `sis-brain/tickets/<ticket>/design.md`.
+Return a single design artifact in your final message, exactly following `templates/design.md` (Repositories / Conventions / Decisions / Cross-Repo Contracts / Change per repository / Acceptance Criteria Coverage for a feature / Regression Surface / Tests per repository / Risk / Status). The orchestrator writes it to the ticket folder in the brain.
 
 - Concise, structured, factual, evidence-based; cite concrete files and symbols as `<repo>/<path>`. The code of record is `origin/<source_branch>` (see `workspace`).
-- End with `READY_FOR_IMPLEMENTATION` if the plan is actionable, otherwise `NEEDS_INPUT` with specifics.
+- End with `READY_FOR_IMPLEMENTATION` if the plan is actionable, otherwise `NEEDS_INPUT` with the question that passes the bar and where you looked.

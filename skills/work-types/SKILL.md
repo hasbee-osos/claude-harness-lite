@@ -28,13 +28,13 @@ The orchestrator proposes the work type together with the flow and branch. Once 
 | **Locked decisions after design** | Fix approach; test strategy | Design approach (with alternatives rejected); test strategy; every new contract or schema choice worth defending later |
 | **Tests** | A regression test that fails before the fix and passes after; characterization tests around it | At least one test per AC at the right level (`testing`); characterization tests on existing behaviour the feature touches |
 | **Evaluate** | Is the bug fixed (evidence), with no regression? | Is **every AC met and evidenced**, with no regression, and nothing built beyond scope? |
-| **Questions** | `qa-packet.md` | `sme-packet.md` (`input-packets`) |
+| **Questions** (last resort, `input-packets`) | `qa-packet.md` | `sme-packet.md` |
 
 The shared principle behind both is the same: **the smallest change that completely and safely delivers the ticket.** For a bug that is a narrow fix. For a feature it is everything the acceptance criteria need, following existing patterns and common components, and nothing they don't. Gold-plating, speculative configurability and "while we're here" refactors are out of scope for both.
 
 ## Acceptance criteria (feature)
 
-- Take them from the ticket when they are written. When they are missing or vague, derive a draft from the description and mark it **draft**. A draft is confirmed in the SME packet before design, never assumed.
+- Take them from the ticket when they are written. When they are missing or vague, derive a draft from the description, the product's behaviour today and similar features, and mark it **draft** with its basis. The developer confirms drafts in the terminal before design; only a criterion with two reasonable readings that passes the bar in `input-packets` goes to the SME.
 - Number them `AC-1…` in the analysis. The design, tests, implementation report and evaluation all cite those numbers, so every criterion can be traced from the ticket to a test with a real result.
 - An AC that cannot be tested automatically names its manual verification step instead. It still needs evidence.
 
@@ -48,10 +48,9 @@ After analysis, the Analyzer flags a story as **too big** when any of these hold
 
 When it does:
 1. It proposes **slices**: each one independently deliverable and testable, with its ACs, the repos it touches, and the order it has to follow.
-2. It sets `NEEDS_INPUT`.
-3. The slices go into the SME packet for confirmation.
+2. The orchestrator shows them to the developer in the terminal. Slicing is a delivery decision, so it does not go to the SME.
 
-The human then either:
+The developer then either:
 - creates the slices as Jira stories or sub-tasks and runs `/work` on each (the harness can't write to Jira), or
 - tells the harness to proceed with the whole story. That override is recorded as a decision with its reason.
 

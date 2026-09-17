@@ -13,4 +13,4 @@ Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `b
 3. Record **Design written** (`brain`).
 4. Present the repos to change, cross-repo contracts, change plan, regression surface, and test strategy summary to the user.
 
-**Stop here.** No implementation. If the designer returns `NEEDS_INPUT`, write the input packet for the questions QA or the SME can answer (`input-packets`) and surface all the specifics to the human.
+**Stop here.** No implementation. Settle the design's questions first (`input-packets` → "The bar"). Only a new blocker that passes the bar and could not have been seen at analysis gets a packet (`input-packets`).
