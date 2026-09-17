@@ -5,7 +5,8 @@
  *
  * Covers: token arithmetic per model, subagent attribution, incremental reads,
  * double-counting, partially flushed lines, the Prometheus output and its
- * cardinality rule, the per-ticket rollup, corrupt input, and monotonicity.
+ * cardinality rule, the per-ticket rollup (per-session merge and the rollup after a
+ * run stops), corrupt input, and monotonicity.
  */
 "use strict";
 const fs = require("fs");
@@ -198,6 +199,44 @@ check("stage seconds from journal", rollup.stage_seconds.implement === 300 && ro
 check("iterations counted", rollup.iterations === 1, String(rollup.iterations));
 check("verdicts counted", rollup.verdicts.FAIL === 1);
 check("findings counted", rollup.findings.blocking === 2 && rollup.findings.non_blocking === 1);
+check("tokens kept per session", rollup.sessions && rollup.sessions.s1 && rollup.sessions.s1.turns === rollup.turns, JSON.stringify(rollup.sessions));
+check("tokens by model", rollup.tokens_by_model["claude-opus-5"].output === 160 + 1 + 999 && rollup.tokens_by_model["claude-sonnet-5"].output === 20, JSON.stringify(rollup.tokens_by_model));
+
+// ---------- 6b. a colleague's sessions survive this machine's rollup ----------
+console.log("\n6b. sessions recorded on another machine");
+const withColleague = JSON.parse(fs.readFileSync(path.join(ticketDir, "metrics.json"), "utf8"));
+withColleague.sessions.colleague = {
+  turns: 3,
+  tokens_by_stage: { design: { input: 0, output: 500, cache_read: 0, cache_creation: 0, thinking: 0 } },
+  tokens_by_model: { "claude-opus-5": { input: 0, output: 500, cache_read: 0, cache_creation: 0, thinking: 0 } },
+};
+fs.writeFileSync(path.join(ticketDir, "metrics.json"), JSON.stringify(withColleague));
+runExpectExit0(payload);
+const merged = JSON.parse(fs.readFileSync(path.join(ticketDir, "metrics.json"), "utf8"));
+check("colleague session kept", merged.sessions.colleague && merged.sessions.colleague.turns === 3);
+check("totals include both machines", merged.tokens.output === 160 + 20 + 1 + 999 + 500, String(merged.tokens.output));
+check("stage totals include colleague stage", merged.tokens_by_stage.design && merged.tokens_by_stage.design.output === 500);
+check("local session not double counted", merged.sessions.s1.tokens_by_model["claude-opus-5"].output === 160 + 1 + 999, JSON.stringify(merged.sessions.s1.tokens_by_model));
+
+// ---------- 6c. the final stage_end is counted after current.json is cleared ----------
+console.log("\n6c. rollup after the run stops");
+fs.appendFileSync(
+  path.join(ticketDir, "journal.jsonl"),
+  [
+    JSON.stringify({ ts: "2026-09-16T12:00:00Z", event: "stage_start", stage: "pr", iteration: 1 }),
+    JSON.stringify({ ts: "2026-09-16T12:01:00Z", event: "stage_end", stage: "pr", iteration: 1 }),
+  ].join("\n") + "\n"
+);
+fs.writeFileSync(path.join(brain, "current.json"), "{}");
+runExpectExit0(payload);
+const afterStop = JSON.parse(fs.readFileSync(path.join(ticketDir, "metrics.json"), "utf8"));
+check("last ticket rolled up once more", afterStop.stage_seconds.pr === 60, JSON.stringify(afterStop.stage_seconds));
+const cursorAfterStop = JSON.parse(fs.readFileSync(path.join(brain, "metrics", ".cursor-s1.json"), "utf8"));
+check("fallback used only once", cursorAfterStop.last_ticket === null, JSON.stringify(cursorAfterStop));
+fs.writeFileSync(
+  path.join(brain, "current.json"),
+  JSON.stringify({ ticket: "GSIS-12345", stage: "implement", iteration: 2, session_id: "s1" })
+);
 
 // ---------- 7. degenerate inputs never fail ----------
 console.log("\n7. degenerate inputs");

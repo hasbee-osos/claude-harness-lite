@@ -11,7 +11,7 @@ First consume the `ground-rules`, `workspace`, `brain`, `work-types`, `git-workf
 
 ## Inputs
 
-- `sis-brain/tickets/<ticket>/analysis.md`, `sis-brain/tickets/<ticket>/design.md`, `sis-brain/tickets/<ticket>/decisions.md` and `state.json`, plus ticket context from the orchestrator.
+- The analysis, design, `decisions.md` and `state.json` from the ticket folder in the brain (`brain`), plus ticket context from the orchestrator.
 - **The locked decisions bind you.** Cite the ID (`per D-3`) where your change follows one. If implementation shows a locked decision cannot hold, stop and report it for superseding — do not implement something that contradicts it.
 - **Change only the repos recorded as `change` in `state.json` `repos`.** Every other repo is read-only context. If the design needs a repo that isn't listed, stop and report.
 - In each of those repos, the current branch must be the ticket branch recorded in `state.json`, and not a protected branch per `git-workflow` (check with `git -C <repo> branch --show-current`). If not, stop and report instead of switching branches yourself.

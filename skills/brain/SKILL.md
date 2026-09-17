@@ -1,28 +1,32 @@
 ---
 name: brain
-description: The brain - the team's shared git repo, cloned into the workspace as sis-brain, holding the durable per-ticket record of every harness run (state, append-only journal, locked decisions with justification, versioned artifacts, metrics), how to sync it, how to resume a ticket in a new session, and what must never be written there. Read before any harness command or agent acts.
+description: The single specification of how the brain is written - the team's shared git repo, cloned into the workspace as sis-brain, holding the durable per-ticket record of every harness run. Covers the layout, what each stage records, state.json, the journal, locked decisions, the index, syncing, resuming a ticket, metrics, the leadership dashboard, and what must never be written there. Read before any harness command or agent acts.
 ---
 
 # The Brain
 
-The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, and why. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped.
+The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, why, and what it cost. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped. Leadership reads the same record through the dashboard.
 
-It replaces the old `.runtime/` folder. That folder was declared temporary scratch, so iteration history was overwritten and the reasoning behind a change was lost when the session ended. **If a ticket is reopened or extended, the brain is the answer to "why was it done this way?".**
+**This file is the only specification of how the brain is written.** Commands, agents, other skills and templates refer here instead of repeating paths, fields or events. To change how the brain is recorded, change this file — and, if a field or event is added, `sis-brain/dashboard/build.js` and `hooks/scripts/telemetry.js` if they read it.
 
 ## Layout
 
 ```text
 <workspace>/sis-brain/            ← a clone of the team's brain repo
 ├── .harness-brain             ← marker; git-guard allows commits and pushes here
-├── .gitignore                 ← metrics/ , current.json
+├── .gitignore                 ← metrics/ , current.json , dashboard/dist/
 ├── .gitattributes             ← *.jsonl merge=union
-├── README.md                  ← seeded on first run
+├── README.md                  ← seeded on first run from templates/brain-readme.md
 ├── index.jsonl                ← one line per ticket milestone (append-only, shared)
 ├── current.json               ← live pointer: which ticket/stage is running now — NOT committed
 ├── metrics/                   ← NOT committed; Prometheus reads these from disk
 │   ├── runs.jsonl             ← one record per collection window (telemetry)
 │   └── harness.prom           ← Prometheus textfile exposition
-└── tickets/<TICKET-ID>/
+├── dashboard/                 ← the leadership dashboard (see Dashboard)
+│   ├── build.js, template.html, prices.json   ← committed
+│   ├── artifact.json          ← the published page's URL — committed
+│   └── dist/                  ← generated page — NOT committed
+└── tickets/<TICKET-ID>/       ← "the ticket folder"
     ├── state.json             ← the resume point
     ├── journal.jsonl          ← append-only event log
     ├── decisions.md           ← locked decisions with justification
@@ -33,43 +37,83 @@ It replaces the old `.runtime/` folder. That folder was declared temporary scrat
     ├── evaluation-1.md, -2.md, …
     ├── escalation-report.md
     ├── pr-<repo>-<target>.md
-    └── metrics.json           ← per-ticket rollup
+    └── metrics.json           ← per-ticket rollup (written by telemetry)
 ```
 
+- **The ticket folder is always `sis-brain/tickets/<TICKET-ID>/`**, flat, keyed only by the Jira key. It never moves. Epic, sprint, assignee and work type are **data in `state.json`**, not folders: tickets change sprint and even work type, and a folder that moves breaks resumes and causes conflicts. Grouping by sprint or epic is the dashboard's job.
 - **The brain is its own git repo**, shared by the team and cloned into the workspace as `sis-brain`. The workspace folder around it is a plain container and is never version-controlled.
 - **Never inside a product repo.** The brain sits at the workspace root, beside the repo clones. If `sis-brain` is missing or is not a git repo, say so and ask the human to clone it — do not silently start a local-only brain.
 - **Iteration artifacts are numbered, never overwritten.** `evaluation-1.md` survives iteration 2. `state.json` `artifacts` records the latest of each.
-- **Keep the brain out of code searches.** The workspace needs a `.ignore` file at its root containing `sis-brain/`. ripgrep honours `.ignore`, so cross-repo code searches stop returning harness records as matches — analyses and decisions quote class names and file paths, and after a few dozen tickets they would drown the real code. `Grep` with an explicit path into the brain still works, so searching the record is unaffected. Create the file on first use if it is missing, or append the line if it exists without it. It sits in the workspace, which is not a git repo, so there is nothing to commit.
-- On first use, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore` (`metrics/`, `current.json`) and `.gitattributes` (`*.jsonl merge=union`) — and commit them.
+- **Keep the brain out of code searches.** The workspace needs a `.ignore` file at its root containing `sis-brain/`. ripgrep honours `.ignore`, so cross-repo code searches stop returning harness records as matches. `Grep` with an explicit path into the brain still works. Create the file on first use if it is missing, or append the line if it exists without it. It sits in the workspace, which is not a git repo, so there is nothing to commit.
+- **On first use**, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore` and `.gitattributes` as above — and commit them.
+
+## What each stage records
+
+Every write to the brain happens at one of these moments. Commands say *when* a moment happens; this table says *what* is recorded. Always update `updated_at`, and write `next_action` in plain words whenever `status` changes. Wrap every agent dispatch in `stage_start` / `stage_end` and overwrite `current.json` just before it.
+
+| Moment | Files written in the ticket folder | Journal events | `state.json` fields | Commit and push |
+|---|---|---|---|---|
+| **Ticket started** (no folder yet) | create the folder, `state.json` | `ticket_started` | everything known, including `jira` (see below), `status: ANALYZING` | `<ID>: ticket started` |
+| **Session resumed** | — | `session_resumed` | append to `sessions`; refresh `jira` | only with the next milestone |
+| **Work type, flow and branch confirmed** | `decisions.md` (flow decision stating the work type) | `human_confirmed`, `decision_locked` | `work_type`, `flow`, `source_branch`, `branch`, `pr_targets`, `human_confirmations` | `<ID>: flow and branch confirmed` |
+| **Analysis written** | `analysis.md` (revision → `analysis-2.md`) and, for NEEDS_INPUT, the input packet | `stage_start`, `stage_end`, `decision_locked` (root cause / scope), and `input_requested` if blocked | `analysis`, `artifacts`, `status`, `blocked_on` | `<ID>: analysis written - READY` / `- NEEDS_INPUT` |
+| **Answers received** for a packet | — | `input_received` | clear `blocked_on`, `status` | with the next milestone |
+| **Design written** | `design.md`, `decisions.md` (approach, test strategy, deviations), input packet if blocked | `stage_start`, `stage_end`, `decision_locked`, `input_requested` if blocked | `design`, `artifacts`, `status`, `blocked_on` | `<ID>: design written` |
+| **Repos confirmed** | `decisions.md` (repo set) | `human_confirmed`, `decision_locked` | `repos`, `context_repos`, `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos confirmed` |
+| **Branch created or reused** (per repo) | — | `branch_created` | `repos.<repo>.branch_created` | `<ID>: branches created` (once, after all repos) |
+| **Implementation reported** | `implementation-report-<n>.md`; `decisions.md` for any convention deviation | `stage_start`, `stage_end`, `decision_locked` if any | `implementation`, `artifacts`, `status: EVALUATING` | `<ID>: implementation <n>` |
+| **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status` | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
+| **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
+| **Escalated** (cap hit or harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
+| **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
+| **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>` |
+| **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
+
+### Input packets
+
+When a stage stops on questions (`input-packets`), record with that stage: `artifacts.qa_packet` or `artifacts.sme_packet` set to the packet filename; `status: NEEDS_INPUT`; `blocked_on: "answers to <packet> Q1–Qn"`; `next_action: "Developer posts <packet> as a Jira comment on <ticket>; when answered, run /work <ticket>"`; and an `input_requested` event. Questions only a developer can answer get `audience: developer` and `packet: null`. On **Answers received**, append `human_confirmed` with `what: "<packet> answers"` and the confirmed values, then `input_received`, and clear `blocked_on`.
+
+### Index lines
+
+The `index.jsonl` line is appended at **started**, every **NEEDS_INPUT** stop, every **evaluation verdict**, **escalated** and **closed** — the moments a reader scanning recent work cares about.
 
 ## Syncing
 
 The brain is shared, so every session keeps it current. All of this runs as `git -C <workspace>/sis-brain …`.
 
 - **Pull before reading.** `git -C sis-brain pull --rebase` when a ticket starts or resumes, so you see what colleagues have recorded.
-- **Commit and push at every milestone**, not only at the end: analysis written, design and repos confirmed, each branch created, each evaluation verdict, PRs prepared, ticket closed. A session that dies mid-ticket must leave nothing stranded on one machine.
-- **Commit message:** `<TICKET-ID>: <milestone>` — e.g. `GSIS-12345: evaluation 2 - FAIL, 2 blocking`. One ticket per commit; never mix two tickets.
+- **Commit and push at every milestone** in the table above, not only at the end. A session that dies mid-ticket must leave nothing stranded on one machine.
+- **Commit message:** `<TICKET-ID>: <milestone>` as in the table. One ticket per commit; never mix two tickets.
 - **Rejected push?** `git -C sis-brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
 - **Conflicts are rare by design.** Each ticket owns its folder, so two people on two tickets never collide. `index.jsonl` is shared but append-only, and `merge=union` resolves it automatically. A genuine conflict means two sessions worked the same ticket: stop and ask the human which record is right.
 - Everyone commits straight to `main`. The brain is a record, not code — there is no review gate, because a gate would stop it being current.
-- `metrics/` and `current.json` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
+- `metrics/`, `current.json` and `dashboard/dist/` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
 
 ## What must never be written to the brain
 
-This record is pushed to GitHub and read by the whole team, so the list is not advisory.
+This record is pushed to GitHub, read by the whole team and summarised for leadership, so the list is not advisory.
 
 - **Chain-of-thought.** Record conclusions, decisions and evidence — not reasoning transcripts.
 - **Secrets, credentials, tokens, connection strings** — in any artifact, journal line or PR description.
 - **Bulk file dumps.** Cite `<repo>/<path>:<line>`; do not paste files.
-- **Jira content beyond what the work needs** — the summary, the acceptance criteria that matter, and the ticket link. Not whole comment threads, not personal data.
+- **Jira content beyond what the work needs** — the summary, the acceptance criteria that matter, the epic, sprint and assignee, and the ticket link. Not whole comment threads, not other personal data.
 - Anything a teammate opening the folder in six months should not be reading.
 
 ## `state.json`
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "ticket": "GSIS-12345",
+  "jira": {
+    "url": "https://gearsjira.atlassian.net/browse/GSIS-12345",
+    "title": "Applicant list shows withdrawn applicants",
+    "issue_type": "Bug",
+    "epic": { "key": "GSIS-2491", "name": "Exam Controller App" },
+    "sprint": { "name": "Sustainment Sprint 21", "start": "2026-09-16", "end": "2026-09-29" },
+    "assignee": "Display Name",
+    "refreshed_at": "2026-09-16T09:10:00Z"
+  },
   "status": "ANALYZING | DESIGNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
   "next_action": "Re-run the implementor with the blocking findings E-1 and E-3 from evaluation-2.md",
   "blocked_on": null,
@@ -124,10 +168,10 @@ This record is pushed to GitHub and read by the whole team, so the list is not a
 }
 ```
 
+- **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name.
 - `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
-- A stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
-- **Write `next_action` in plain words every time `status` changes.** It is what a new session reads first.
-- Update `updated_at` on every write.
+- A PR stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
+- A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block and set `schema_version: 2`.
 
 ## `journal.jsonl` — append-only
 
@@ -139,10 +183,10 @@ One JSON object per line. Never rewrite or delete a line; a mistake is corrected
 {"ts":"2026-09-16T10:31:02Z","event":"decision_locked","id":"D-3","summary":"Fix in the service layer, not the SQL view"}
 {"ts":"2026-09-16T10:31:44Z","event":"human_confirmed","what":"repos_to_change","value":["sis-product-sis-admin-backend"]}
 {"ts":"2026-09-16T11:05:18Z","event":"evaluation","verdict":"FAIL","blocking":2,"non_blocking":1,"iteration":1}
-{"ts":"2026-09-16T11:40:57Z","event":"pr_prepared","repo":"sis-product-sis-frontend","target":"base-sandbox-qa","url":null}
+{"ts":"2026-09-16T11:40:57Z","event":"pr_prepared","repo":"sis-product-sis-frontend","stage":1,"target":"base-sandbox-qa","url":null}
 ```
 
-Event vocabulary — a closed set. Do not invent events.
+Event vocabulary — a closed set. Do not invent events; add one here first.
 
 | Event | When | Required fields |
 |---|---|---|
@@ -151,15 +195,17 @@ Event vocabulary — a closed set. Do not invent events.
 | `stage_start` / `stage_end` | before and after each agent or command stage | `stage`, `iteration` |
 | `iteration_start` | a new implement/evaluate cycle begins | `iteration`, `reason` |
 | `human_confirmed` | the human approves something the harness paused for | `what`, `value` |
+| `input_requested` | a stage stops on questions and a packet is written | `audience` (`qa`, `sme` or `developer`), `packet` (filename or null), `questions` (count) |
+| `input_received` | the answers are read back and confirmed | `audience`, `packet` |
 | `decision_locked` | a decision record is added | `id`, `summary` |
 | `decision_superseded` | a locked decision is replaced | `id`, `superseded_by` |
 | `branch_created` | a ticket branch is created or reused | `repo`, `branch`, `reused` |
 | `evaluation` | the evaluator returns a verdict | `verdict`, `blocking`, `non_blocking`, `iteration` |
-| `pr_prepared` | a PR description or compare link is produced | `repo`, `target`, `url` |
+| `pr_prepared` | a PR description or compare link is produced | `repo`, `stage`, `target`, `url` |
 | `escalated` | the iteration cap is hit or the harness stops | `reason` |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
 
-`stage` is one of `analyze`, `design`, `implement`, `evaluate`, `pr`, `publish`. Timestamps are UTC ISO-8601.
+`stage` is one of `analyze`, `design`, `implement`, `evaluate`, `pr`, `publish`. Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later.
 
 ## `decisions.md` — decisions locked, with justification
 
@@ -194,10 +240,10 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 ## `index.jsonl` and `current.json`
 
-`index.jsonl` — one appended line per ticket milestone (started, verdict, closed, escalated), so `/brain` can list recent work without opening every folder:
+`index.jsonl` — one appended line per ticket milestone (see the table above), so `/brain` can list recent work without opening every folder:
 
 ```json
-{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","work_type":"bug","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
+{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","title":"Applicant list shows withdrawn applicants","work_type":"bug","epic":"GSIS-2491","sprint":"Sustainment Sprint 21","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
 ```
 
 `current.json` — overwritten, not appended, before every agent dispatch, so the telemetry collector can attribute token usage to the right ticket and stage:
@@ -208,22 +254,53 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 Write `{}` when a ticket stops being worked on, so idle turns are not billed to the last ticket.
 
+## Finding the ticket when none is named
+
+`/design`, `/implement`, `/evaluate` and `/pr` accept an omitted ticket ID. Use the ticket in `current.json` if it names one; otherwise the ticket of the last line of `index.jsonl`; otherwise the ticket folder with the newest `state.json` `updated_at`. Say which ticket was picked and why before acting.
+
 ## Resuming a ticket
 
 Every command that takes a ticket does this before anything else:
 
-1. Read `state.json`, the last ~20 lines of `journal.jsonl`, and `decisions.md`.
+1. `git -C sis-brain pull --rebase`, then read `state.json`, the last ~20 lines of `journal.jsonl`, and `decisions.md`.
 2. Print a **resume summary** to the human:
    - status, current iteration, and `next_action`;
    - stages completed, with their artifact filenames;
    - locked decisions — ID and one line each;
    - confirmations the human already gave, noting they will not be asked again unless they say otherwise;
    - anything in `blocked_on`.
-3. Append `session_resumed` and add the new session to `sessions`.
+3. Append `session_resumed`, add the new session to `sessions`, and refresh `jira`.
 4. Continue from `status`. **Never redo a stage whose artifact already exists** unless the human asks — and if a stage is redone, write the new artifact under the next iteration number instead of overwriting.
 
 If `state.json` is missing but the folder exists, reconstruct what you can from the journal and the artifacts, say so explicitly, and ask before continuing.
 
 ## Metrics
 
-The telemetry collector (`hooks/scripts/telemetry.js`) writes `sis-brain/metrics/runs.jsonl`, `sis-brain/metrics/harness.prom` and each ticket's `metrics.json`. Agents and commands never write those files — they only keep `current.json` accurate. See `docs/telemetry.md`.
+The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.jsonl`, `metrics/harness.prom` and each ticket's `metrics.json`. Agents and commands never write those files — they only keep `current.json` and the journal accurate. See `docs/telemetry.md`.
+
+`metrics.json` keeps token usage **per session**, because `runs.jsonl` is machine-local: a colleague's machine only knows its own sessions, so the collector replaces the sessions it knows and keeps the rest. Totals are recomputed from the sessions; stage durations, iterations and verdicts are recomputed from the journal, which every machine shares.
+
+```json
+{
+  "ticket": "GSIS-12345",
+  "updated_at": "2026-09-16T11:52:00Z",
+  "sessions": {
+    "893ff923-…": { "turns": 35, "tokens_by_stage": { "analyze": { "input": 74, "output": 14808, "cache_read": 1854099, "cache_creation": 226590, "thinking": 1609 } }, "tokens_by_model": { "claude-opus-5": { "…": 0 } } }
+  },
+  "tokens": { "input": 0, "output": 0, "cache_read": 0, "cache_creation": 0, "thinking": 0 },
+  "tokens_by_stage": {}, "tokens_by_model": {}, "turns": 0,
+  "stage_seconds": { "analyze": 505 },
+  "iterations": 0, "verdicts": {}, "findings": { "blocking": 0, "non_blocking": 0 }
+}
+```
+
+`thinking` is already included in `output`; never add the two.
+
+## Dashboard
+
+The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: what is in progress and who it is waiting on, delivery by sprint and epic, the evaluator's first-pass rate, time and API-equivalent cost by stage, and per ticket the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
+
+- `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
+- `dashboard/prices.json` holds per-model USD prices per million tokens. Cost is labelled **API-equivalent**: the team may be on a subscription, so it is what the work would cost at list API prices, not a bill.
+- `dashboard/artifact.json` holds the published page's URL. **Only the person who first published the page can update it**; everyone else can view it. `/brain publish` builds and republishes it.
+- The page is as current as the last publish. Publishing does not change any ticket record.

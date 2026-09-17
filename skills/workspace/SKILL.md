@@ -41,7 +41,7 @@ The workspace folder itself is **never a git repo** — it is a plain container,
 
 ## The brain
 
-Every harness run records its state, decisions and artifacts in `<workspace>/sis-brain/` — one folder per ticket, durable across sessions. The layout, the `state.json` schema, the journal event vocabulary, the decision-record rules and the resume protocol all live in the **`brain`** skill. Read it before writing anything there.
+Every harness run records its state, decisions and artifacts in `<workspace>/sis-brain/` — one folder per ticket, durable across sessions. Everything about what is written there — layout, what each stage records, the `state.json` schema, the journal event vocabulary, the decision-record rules, the resume protocol and the dashboard — lives only in the **`brain`** skill. Read it before writing anything there.
 
 Two things matter here in the workspace:
 

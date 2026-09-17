@@ -109,7 +109,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 | `/design [ticket]` | Designer only: plan per repo + test strategy; requires an analysis artifact |
 | `/implement [ticket]` | Implementor only: code + tests + verification in each confirmed repo; requires analysis + design |
 | `/evaluate [ticket]` | Evaluator only; verdict per repo and overall: PASS / FAIL / INSUFFICIENT_EVIDENCE |
-| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only |
+| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only. `/brain publish` rebuilds and republishes the leadership dashboard on claude.ai |
 | `/pr [ticket]` | PR creation per changed repo × target, gated on evaluator PASS; without `gh`, pushes each branch and gives a prefilled GitHub compare link + description for the human to open the PR; **never merges** |
 
 ### How `/work` runs
@@ -132,11 +132,11 @@ It stops and waits for the human when:
 - The flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
 - The repos to change need confirmation. No branch is created before that.
 - A repo to change has uncommitted changes, or Jira can't be read.
-- The Analyzer or Designer returns `NEEDS_INPUT`. The harness writes a paste-ready Jira comment with the questions to `sis-brain/tickets/<ticket>/`: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
+- The Analyzer or Designer returns `NEEDS_INPUT`. The harness writes a paste-ready Jira comment with the questions to the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
 - 3 evaluation rounds fail. An escalation report is written.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 
-On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to `sis-brain\tickets\<ticket>\pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
+On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to the ticket's brain folder as `pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
 
 Run manually:
 - **`/pr <ticket>` for stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, this raises the customer sandbox PRs for each repo. `/work` stops after stage 1, because days can pass between stages.
@@ -169,23 +169,9 @@ The team's development guidelines are Markdown in this repo and are read on **ev
 
 The brain is a **separate git repo, shared by the team**, cloned into each workspace as `sis-brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
 
-```text
-sis-brain/                           committed:
-├── .harness-brain                   marker; git-guard allows commits here and nowhere else
-├── index.jsonl                      every ticket the harness has worked on
-└── tickets/<TICKET-ID>/
-    ├── state.json                   status, iteration, branch, repos, PRs, and next_action
-    ├── journal.jsonl                append-only event log with timestamps
-    ├── decisions.md                 every decision, with its justification and evidence
-    ├── analysis.md, design.md
-    ├── implementation-report-1.md, evaluation-1.md, -2.md, …
-    ├── pr-<repo>-<target>.md
-    └── metrics.json                 what this ticket cost
+One folder per ticket, `tickets/<TICKET-ID>/`, holds its state, journal, locked decisions, every iteration's artifacts and its metrics. Epic, sprint and assignee are recorded as data, not folders, so a ticket that changes sprint never moves. A leadership dashboard built from the same files is published to claude.ai with `/brain publish`.
 
-                                     not committed (machine-local):
-├── current.json                     which ticket this machine is on right now
-└── metrics/                         runs.jsonl + harness.prom (see Telemetry)
-```
+**`skills/brain/SKILL.md` is the single specification of how the brain is written** — layout, what each stage records, fields, events, syncing and the dashboard. To review or improve how the harness records its work, read and edit that one file.
 
 Four properties make it worth keeping:
 
@@ -204,7 +190,7 @@ A third hook, `telemetry.js`, runs when a subagent or a session ends. It reads t
 
 - `sis-brain/metrics/runs.jsonl` — one record per collection window, with the ticket and stage
 - `sis-brain/metrics/harness.prom` — Prometheus textfile exposition, recomputed from the brain so the counters stay monotonic
-- `sis-brain/tickets/<ticket>/metrics.json` — the per-ticket rollup `/brain` reports
+- each ticket's `metrics.json` — the per-ticket rollup `/brain` and the dashboard report
 
 Point node_exporter at `sis-brain/metrics` with `--collector.textfile.directory` and Grafana can chart first-pass rate, iterations per ticket, tokens per ticket and where the wall-clock goes. The metrics carry **no content** — counts, durations and bounded labels only, never a ticket ID, a prompt, a path or code. Claude Code's own OpenTelemetry export covers the complementary question of overall usage cost.
 
@@ -252,7 +238,7 @@ Judging whether the harness is worth investing in takes a handful of real ticket
 **Pick:** small, reproducible Bugs (or small Stories) with clear acceptance criteria, on the `base`, `gcet` or `gutech` line. Include at least one that touches a service **and** the UI.
 **Avoid:** hotfixes, OSOS, otc/cbfs, and anything urgent.
 
-The brain is the pilot's evidence: `sis-brain/tickets/<ticket>/` keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
+The brain is the pilot's evidence: each ticket's folder keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
 
 | Question | Answer |
 |---|---|
@@ -275,7 +261,7 @@ Multi-repo support is new and untested on real tickets; the repo selection and t
 
 ## Limitations (by design)
 
-- Read-only Jira: the end-of-run summary is not posted; the record stays in `sis-brain/tickets/<ticket>/`. Publishing requires an MCP with write support and a guard change; nothing is faked.
+- Read-only Jira: the end-of-run summary is not posted; the record stays in the brain. Publishing requires an MCP with write support and a guard change; nothing is faked.
 - Screen recordings are read as still frames (up to 40 per video, taken at on-screen changes): no audio, and something shown for under a second can be missed.
 - Automatic PR creation requires an authenticated `gh`; otherwise the human opens each PR from a prefilled compare link.
 - No orchestration server, no database, no UI — the loop runs inside Claude Code.

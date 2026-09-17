@@ -87,7 +87,7 @@ Branches exist but there is no recent activity. Do not assume a flow; ask the hu
 
 - Propose exactly one flow (A or B) from the Jira context with a one-line reason, the full branch name, and the PR targets per stage. Hotfix, OSOS, and dormant-line tickets → escalate.
 - **The human must confirm the flow, branch name, and PR targets before any branch is created.** If context is ambiguous, stop and ask.
-- Record `flow`, `source_branch`, `branch`, `pr_targets` (grouped by stage, with each stage's status) in `sis-brain/tickets/<ticket-id>/state.json` (schema in `brain`).
+- Record `flow`, `source_branch`, `branch`, `pr_targets` (grouped by stage, with each stage's status) in the ticket's `state.json` (schema in `brain`).
 - A stage is done only when its PRs are merged and verified in **every** changed repo.
 
 ## Branch naming
