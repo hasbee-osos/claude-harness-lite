@@ -1,7 +1,7 @@
 ---
 description: Run the complete bounded delivery workflow for a Jira bug or story across the workspace repos (analyze → design → implement → evaluate loop → PR)
 argument-hint: <jira-ticket-id-or-url>
-allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash, Artifact
 ---
 
 # /work — full harness run for a bug or a feature
@@ -17,6 +17,8 @@ Orchestrate the complete workflow. Use the Task tool with the plugin's subagents
 This is not optional bookkeeping. It is what lets the next session continue the ticket, what explains the change months later, and what the leadership dashboard is built from.
 
 **Everything the run writes to the brain — files, journal events, `state.json` fields, `index.jsonl` lines, `current.json`, commits and pushes — is specified once, in `brain` → "What each stage records".** The steps below name the moment in **bold**; record it exactly as that table says. Decision records and their locking rules are in `brain` too.
+
+Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an escalation, not only step 15 — record **Run stops**. Its last part republishes the leadership dashboard (`brain` → Publishing); that is best-effort and never changes the run's outcome.
 
 ## Workflow
 
@@ -45,7 +47,7 @@ This is not optional bookkeeping. It is what lets the next session continue the 
     - `FAIL` or `INSUFFICIENT_EVIDENCE` → record **New iteration** with the reason. For INSUFFICIENT_EVIDENCE, first attempt to obtain the missing evidence (e.g. run the unexecuted verification) if practical. If `iteration > 3`: **STOP**, write the escalation report from `templates/escalation-report.md`, record **Escalated**, present it, and end. Otherwise loop back to step 10 with only the evaluator's **blocking findings** as the implementor's iteration scope (non-blocking recommendations must not trigger a cycle).
 13. **PR.** Follow the `/pr` command logic for the **first stage** in `pr_targets` only, for **every changed repo** (later stages are raised by re-running `/pr` once the human confirms the previous stage is done). Record **PRs prepared**. **Never merge.**
 14. **Publish to Jira** if the configured Jira MCP supports it: post the concise final summary (Analysis/Design/Implementation/Evaluation status, repos, iterations, PR references) and the final artifacts as comments. Do not publish intermediate agent messages or chain-of-thought. If the MCP does not support writes (or a guard blocks them), do not fake it — document the limitation and leave the record in the brain.
-15. **Close the run.** Record **Run stops**, with `next_action` saying what the human does next.
+15. **Close the run.** Record **Run stops**, with `next_action` saying what the human does next, and republish the dashboard as part of it.
 
 The evaluation stage may never be bypassed. Do not allow any agent to skip it.
 

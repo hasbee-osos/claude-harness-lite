@@ -66,7 +66,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
 | **Escalated** (cap hit or harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
 | **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
-| **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>` |
+| **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
 
 ### Input packets
@@ -302,5 +302,20 @@ The dashboard is a private page on claude.ai that shows leadership how the harne
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
 - `dashboard/prices.json` holds per-model USD prices per million tokens. Cost is labelled **API-equivalent**: the team may be on a subscription, so it is what the work would cost at list API prices, not a bill.
-- `dashboard/artifact.json` holds the published page's URL. **Only the person who first published the page can update it**; everyone else can view it. `/brain publish` builds and republishes it.
-- The page is as current as the last publish. Publishing does not change any ticket record.
+- `dashboard/artifact.json` holds the published page's URL and owner. **Only the owner can update the page**; everyone else can view it.
+- The page is as current as the last publish. Publishing never changes a ticket record.
+
+### Publishing
+
+The dashboard is republished in two ways, both following the same steps:
+
+- **`/brain publish`** — on demand. It may also make the **first** publish, which creates the page and `artifact.json`.
+- **When a run stops** — the last step of **Run stops**, after the brain is pushed, so the page shows the run's latest milestone without anyone remembering to publish. It is best-effort: it never makes the first publish, never commits, never asks the human anything, and never fails or delays the run's result. If any step below cannot be done — no `dashboard/build.js`, no `url` in `artifact.json`, no Artifact tool in the session, the build fails, or the publish is refused because this person is not the owner — skip publishing and say so in one line (for example "Dashboard not refreshed: only its owner can publish; it will catch up at their next publish"). A colleague's run is still pushed to the brain and appears at the owner's next publish.
+
+Steps:
+
+1. Run `node sis-brain/dashboard/build.js`. It prints the output path, `sis-brain/dashboard/dist/index.html`, and a one-line summary.
+2. Read the whole generated file before publishing it.
+3. If this session has not yet read or published the page, read it once with the Artifact tool (`action: "read"`, the `url` from `artifact.json`); a publish to a page the session has not read is refused.
+4. Publish the generated file to that `url`. Never publish without `url` except for the first publish from `/brain publish`: it would create a second page.
+5. `/brain publish` only: set `published_at` in `artifact.json`, commit `dashboard: publish`, and push.
