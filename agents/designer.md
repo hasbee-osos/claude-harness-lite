@@ -12,7 +12,7 @@ First consume the `ground-rules`, `workspace`, `brain`, `work-types`, `repositor
 
 ## Your task
 
-You receive the analysis artifact (`sis-brain/tickets/<ticket>/analysis.md`), the decisions locked so far (`sis-brain/tickets/<ticket>/decisions.md`) and ticket context.
+You receive the analysis artifact and the decisions locked so far (`decisions.md`) from the ticket folder in the brain (`brain`), and ticket context.
 
 - **Follow the locked decisions and cite them by ID.** If your inspection shows a locked decision is wrong, say so explicitly and propose superseding it with a new record — never quietly design around it.
 

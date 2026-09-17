@@ -1,25 +1,26 @@
 ---
-description: Read the workspace brain - list recent tickets, or show one ticket's timeline, locked decisions, iteration history and metrics
-argument-hint: [jira-ticket-id]
-allowed-tools: Read, Glob, Grep, Bash
+description: Read the workspace brain - list recent tickets, show one ticket's timeline, locked decisions, iteration history and metrics, or publish the leadership dashboard
+argument-hint: [jira-ticket-id | publish]
+allowed-tools: Read, Glob, Grep, Bash, Artifact
 ---
 
 # /brain — read the workspace record
 
-Input: optional `$ARGUMENTS` (Jira ticket ID). Read the `brain` skill first. **This command is read-only**: it never changes ticket state, never dispatches an agent, never touches a product repo. It may run `git -C sis-brain pull --rebase` to show the team's current record, and nothing else.
+Input: optional `$ARGUMENTS` — a Jira ticket ID, or `publish`. Read the `brain` skill first; it is the specification of every file read here. **This command never changes a ticket record**: it never changes ticket state, never dispatches an agent, never touches a product repo. It may run `git -C sis-brain pull --rebase` to show the team's current record. `publish` additionally builds the dashboard and may commit `dashboard/artifact.json`, and nothing else.
+
+If `sis-brain/` does not exist, say so plainly — the harness has not run in this workspace yet — and stop.
 
 ## With no argument — list recent work
 
-1. `git -C sis-brain pull --rebase`, then read the last ~30 lines of `sis-brain/index.jsonl`. If it does not exist, list `sis-brain/tickets/*/state.json` instead and say the index is missing.
-2. Print one row per ticket, most recent first: ticket, status, verdict, iterations, repos changed, branch, PR count, when it was last touched.
+1. `git -C sis-brain pull --rebase`, then read the last ~30 lines of `sis-brain/index.jsonl`. If it does not exist, list the tickets' `state.json` files instead and say the index is missing.
+2. Print one row per ticket, most recent first: ticket, title, sprint, status, verdict, iterations, repos changed, PR count, when it was last touched.
 3. Show `sis-brain/current.json` if it names a ticket, as "in progress now".
-4. If `sis-brain/` does not exist, say so plainly — the harness has not run in this workspace yet — and stop.
 
 ## With a ticket ID — show that ticket
 
-`git -C sis-brain pull --rebase`, then read `sis-brain/tickets/<ticket-id>/` and present, in this order:
+`git -C sis-brain pull --rebase`, then read the ticket folder (`brain`) and present, in this order:
 
-1. **Where it stands** — status, iteration `n of max`, and `next_action` verbatim. Anything in `blocked_on` goes here, first.
+1. **Where it stands** — title, epic, sprint, status, iteration `n of max`, and `next_action` verbatim. Anything in `blocked_on` goes here, first.
 2. **Timeline** — `journal.jsonl` rendered as a readable list: timestamp, event, the fields that matter. Collapse repetitive `stage_start`/`stage_end` pairs into one line with the duration.
 3. **Decisions** — every record from `decisions.md`: ID, the decision, and its status. Mark `SUPERSEDED` ones clearly. Show the full record for any the user asks about rather than printing all of them in full.
 4. **Human confirmations** — what the human already approved, and when.
@@ -28,6 +29,18 @@ Input: optional `$ARGUMENTS` (Jira ticket ID). Read the `brain` skill first. **T
 7. **PRs** — from `state.json` `prs`: repo, stage, target, link or compare link, and merge status as last recorded.
 
 Close with one sentence on what a person would do next to move the ticket — but do **not** do it. Use `/work <ticket-id>` to continue the ticket.
+
+## `publish` — rebuild and republish the leadership dashboard
+
+1. `git -C sis-brain pull --rebase`.
+2. If `sis-brain/dashboard/build.js` is missing, say the brain has no dashboard yet and stop.
+3. Run `node sis-brain/dashboard/build.js`. It prints the output path (`sis-brain/dashboard/dist/index.html`) and a one-line summary; show the summary. If it fails, show the error and stop.
+4. Read the whole generated file before publishing it.
+5. Read `sis-brain/dashboard/artifact.json`.
+   - **It has a `url`:** read the live artifact once with the Artifact tool (`action: "read"`, that `url`), then publish the generated file to that `url`. If the publish is refused because this person does not own the page, say so: only the owner named in `artifact.json` can update it; they should run `/brain publish`. Do not publish a second copy.
+   - **It is missing or has no `url`:** this is the first publish. Ask the human to confirm they want to own the dashboard page, then publish the file as a new artifact with favicon `🧠` and a one-sentence description. Write `{"url": "<url>", "owner": "<display name the human gives>", "published_at": "<UTC ISO-8601>"}` to `artifact.json`, commit it as `dashboard: first publish`, and push.
+6. Update `published_at` in `artifact.json` on each later publish, commit `dashboard: publish`, and push.
+7. Give the human the page link.
 
 ## Notes
 

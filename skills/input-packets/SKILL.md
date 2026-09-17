@@ -35,13 +35,8 @@ The orchestrator writes it from the stage's **Open Questions**, after the artifa
 
 ## Recording it
 
-- Save it to `sis-brain/tickets/<ticket>/qa-packet.md` or `sme-packet.md`. A later round of questions on the same ticket goes to `qa-packet-2.md` and so on; never overwrite.
-- In `state.json`:
-  - set `artifacts.qa_packet` or `artifacts.sme_packet`
-  - keep `status: NEEDS_INPUT`
-  - set `blocked_on` to "answers to <packet> Q1–Qn"
-  - set `next_action` to "Developer posts <packet> as a Jira comment on <ticket>; when answered, run /work <ticket>"
-- Commit and push with the stage milestone.
+- Save it in the ticket folder as `qa-packet.md` or `sme-packet.md`. A later round of questions on the same ticket goes to `qa-packet-2.md` and so on; never overwrite.
+- Record it with the stage that stopped, exactly as `brain` → "What each stage records" and "Input packets" say.
 - Show the developer the path, and tell them to paste the file's content as a Jira comment. The template's Markdown (bold, lists, tables) converts on paste.
 
 ## Reading the answers (on resume)
@@ -51,11 +46,9 @@ When `/work` resumes a ticket whose `blocked_on` names a packet:
 1. Read the ticket's comments (`listJiraIssueComments`) posted after the packet was committed, and any answers the developer pastes in the terminal.
 2. Map each answer to its question number. Show the developer the mapping as a table: question, answer, who answered, and when.
    - An unanswered, unclear or contradictory answer is marked as such. It is never guessed.
-3. **The developer confirms the mapping.** Then:
-   - append `human_confirmed` with `what: "<packet> answers"` and the confirmed values;
-   - clear `blocked_on`.
+3. **The developer confirms the mapping.** Then record **Answers received** (`brain`).
 4. An answer that settles a choice becomes a decision record, citing the Jira comment as evidence. Examples: who receives a notification, what a business rule is, or that the defect no longer reproduces. If it reverses an earlier decision, supersede that decision.
 5. Continue from the stage that stopped. Re-run that stage with the answers, writing its artifact as the next revision (`analysis-2.md`). Never overwrite the earlier artifact.
 6. If answers are missing, stop again. Show which questions are still open, and write no new packet unless the questions changed.
 
-A bug that QA confirms no longer reproduces goes to the human to close. Record the outcome and append `ticket_closed` only when the human confirms.
+A bug that QA confirms no longer reproduces goes to the human to close. Record **Ticket closed** (`brain`) only when the human confirms.

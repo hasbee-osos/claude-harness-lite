@@ -21,7 +21,7 @@ The harness route is the one that knows about tickets, stages, repos and verdict
 2. sums `message.usage` per model, separating subagent turns (`isSidechain`) from the main thread;
 3. attributes that window to the ticket, stage and iteration named in `sis-brain/current.json`, which `/work` keeps current;
 4. appends the result to `sis-brain/metrics/runs.jsonl`;
-5. **recomputes** `sis-brain/metrics/harness.prom` and the ticket's `metrics.json` from the brain — journals for durations and verdicts, `state.json` for status and repos.
+5. **recomputes** `sis-brain/metrics/harness.prom` and the ticket's `metrics.json` from the brain — journals for durations and verdicts, `state.json` for status and repos. `metrics.json` keeps tokens per session and replaces only the sessions this machine recorded, so a colleague's sessions on the same ticket are never wiped. When `current.json` has just been cleared, the last ticket this session worked on is rolled up once more, so its final `stage_end` is counted. The file's shape is in `skills/brain/SKILL.md`.
 
 Recomputing rather than incrementing means the counters survive a crash, a killed session or a hand-edited file, and stay monotonic as Prometheus requires. Stage durations come from the journal's `stage_start`/`stage_end` pairs, not from transcript timestamps, so a stage that spans a coffee break is measured honestly.
 
