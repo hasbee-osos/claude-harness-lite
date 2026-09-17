@@ -32,15 +32,14 @@ Close with one sentence on what a person would do next to move the ticket — bu
 
 ## `publish` — rebuild and republish the leadership dashboard
 
+`/work` already republishes the dashboard whenever a run stops. Use this to refresh it on demand, or to publish it for the first time.
+
 1. `git -C sis-brain pull --rebase`.
 2. If `sis-brain/dashboard/build.js` is missing, say the brain has no dashboard yet and stop.
-3. Run `node sis-brain/dashboard/build.js`. It prints the output path (`sis-brain/dashboard/dist/index.html`) and a one-line summary; show the summary. If it fails, show the error and stop.
-4. Read the whole generated file before publishing it.
-5. Read `sis-brain/dashboard/artifact.json`.
-   - **It has a `url`:** read the live artifact once with the Artifact tool (`action: "read"`, that `url`), then publish the generated file to that `url`. If the publish is refused because this person does not own the page, say so: only the owner named in `artifact.json` can update it; they should run `/brain publish`. Do not publish a second copy.
-   - **It is missing or has no `url`:** this is the first publish. Ask the human to confirm they want to own the dashboard page, then publish the file as a new artifact with favicon `🧠` and a one-sentence description. Write `{"url": "<url>", "owner": "<display name the human gives>", "published_at": "<UTC ISO-8601>"}` to `artifact.json`, commit it as `dashboard: first publish`, and push.
-6. Update `published_at` in `artifact.json` on each later publish, commit `dashboard: publish`, and push.
-7. Give the human the page link.
+3. Read `sis-brain/dashboard/artifact.json`.
+   - **It has a `url`:** follow `brain` → Publishing. Show the build summary. If the build fails, show the error and stop. If the publish is refused because this person does not own the page, say that only the owner named in `artifact.json` can update it. Never publish a second copy.
+   - **It is missing or has no `url`:** this is the first publish. Build and read the page as `brain` → Publishing says, ask the human to confirm they want to own the dashboard page, then publish the file as a new artifact with favicon `🧠` and a one-sentence description. Write `{"url": "<url>", "owner": "<display name the human gives>", "published_at": "<UTC ISO-8601>"}` to `artifact.json`, commit it as `dashboard: first publish`, and push.
+4. Give the human the page link.
 
 ## Notes
 

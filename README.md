@@ -43,7 +43,7 @@ C:\sis-repos\                            workspace folder (any name, any path)
 
 **Every session:** `cd` into the workspace and run `claude`. No flags.
 
-**When the harness changes** (a PR is merged): `claude plugin marketplace update sis-harness` then `claude plugin update engineering-harness@sis-harness`.
+**When the harness changes** (a PR is merged): `claude plugin marketplace update sis-harness` then `claude plugin update engineering-harness@sis-harness`. This only picks up a change if the merged PR raised `version` in `.claude-plugin/plugin.json`; otherwise the update reports "already at the latest version". Every PR that changes the harness raises it.
 
 **Prerequisites:** Claude Code installed and logged in; `git` and **Node.js on PATH** (the safety hooks run on Node, and without it they silently do nothing); each repo's own build tools (JDK + Maven/Gradle, Node/npm), because the harness runs real tests; a Jira account on the team's Atlassian site.
 
@@ -109,7 +109,7 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 | `/design [ticket]` | Designer only: plan per repo + test strategy; requires an analysis artifact |
 | `/implement [ticket]` | Implementor only: code + tests + verification in each confirmed repo; requires analysis + design |
 | `/evaluate [ticket]` | Evaluator only; verdict per repo and overall: PASS / FAIL / INSUFFICIENT_EVIDENCE |
-| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only. `/brain publish` rebuilds and republishes the leadership dashboard on claude.ai |
+| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only. `/brain publish` rebuilds and republishes the leadership dashboard on claude.ai; `/work` also republishes it whenever a run stops |
 | `/pr [ticket]` | PR creation per changed repo × target, gated on evaluator PASS; without `gh`, pushes each branch and gives a prefilled GitHub compare link + description for the human to open the PR; **never merges** |
 
 ### How `/work` runs
@@ -169,7 +169,7 @@ The team's development guidelines are Markdown in this repo and are read on **ev
 
 The brain is a **separate git repo, shared by the team**, cloned into each workspace as `sis-brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
 
-One folder per ticket, `tickets/<TICKET-ID>/`, holds its state, journal, locked decisions, every iteration's artifacts and its metrics. Epic, sprint and assignee are recorded as data, not folders, so a ticket that changes sprint never moves. A leadership dashboard built from the same files is published to claude.ai with `/brain publish`.
+One folder per ticket, `tickets/<TICKET-ID>/`, holds its state, journal, locked decisions, every iteration's artifacts and its metrics. Epic, sprint and assignee are recorded as data, not folders, so a ticket that changes sprint never moves. A leadership dashboard built from the same files is published to claude.ai: `/work` republishes it whenever a run stops (only the page owner's runs can), and `/brain publish` refreshes it on demand.
 
 **`skills/brain/SKILL.md` is the single specification of how the brain is written** — layout, what each stage records, fields, events, syncing and the dashboard. To review or improve how the harness records its work, read and edit that one file.
 
