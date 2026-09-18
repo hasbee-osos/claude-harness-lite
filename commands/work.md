@@ -23,7 +23,7 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
 ## Starting or resuming
 
 1. **Validate the input.** Extract the ticket ID from the ID or URL. If it is missing or invalid, stop and ask.
-2. **Load Jira context.** Read the issue through the read-only Jira MCP: summary, description, comments (`executeRead` → `listJiraIssueComments`), linked issues. **If Jira is unavailable, stop** and explain that the context could not be retrieved. Never fabricate ticket content. If no Jira MCP is configured, ask the user to paste the ticket and record that it was provided manually.
+2. **Load Jira context.** Read the issue through the read-only Jira MCP (`view: "evidence"`, so custom fields such as *Dev Lead Estimation* are included): summary, description, comments (`executeRead` → `listJiraIssueComments`), linked issues. **If Jira is unavailable, stop** and explain that the context could not be retrieved. Never fabricate ticket content. If no Jira MCP is configured, ask the user to paste the ticket and record that it was provided manually.
    - **Attachments** (only when the plan still has to be written): follow `jira-attachments` — list, download, extract frames from every screen recording, and keep the local paths for the Planner. If one cannot be read, carry on and pass the failure to the Planner.
 3. **Initialize or resume.** Discover the workspace repos (`harness-core` → Workspace). Run `git -C sis-brain pull --rebase` first; if `sis-brain` is missing or not a git repo, stop and ask the human to clone it. Ensure the workspace `.ignore` per `brain`.
    - **No `state.json`:** seed the brain if needed, record **Ticket started** with the `jira` block, and go to step 4.

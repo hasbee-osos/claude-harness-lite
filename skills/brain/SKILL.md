@@ -5,7 +5,7 @@ description: The single specification of how the brain is written - the team's s
 
 # The Brain
 
-The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, why, and what it cost. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped. Leadership reads the same record through the dashboard.
+The **brain** is the team's shared record: a git repo cloned into the workspace as `sis-brain`, with one folder per ticket recording what the harness did, what it decided, why, and what it took. Every session pulls it, writes to it and pushes, so any session — days later, a different person, a different machine — can read it and pick up exactly where the last one stopped. Leadership reads the same record through the dashboard.
 
 **This file is the only specification of how the brain is written.** Commands, agents, other skills and templates refer here instead of repeating paths, fields or events. To change how the brain is recorded, change this file — and, if a field or event is added, `sis-brain/dashboard/build.js` and `hooks/scripts/telemetry.js` if they read it.
 
@@ -25,7 +25,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 ├── dashboard/                 ← the leadership dashboard (see Dashboard)
 │   ├── build.js, template.html, prices.json   ← committed
 │   ├── artifact.json          ← the published page's URL — committed
-│   └── dist/                  ← generated page — NOT committed
+│   └── dist/                  ← generated page and costs.json — NOT committed
 ├── codebase/                  ← the codebase map (see Codebase map)
 │   ├── README.md, build.js, repos.json   ← committed
 │   ├── <repo>.md              ← hand-written notes per repo — committed
@@ -91,7 +91,7 @@ The brain is shared, so every session keeps it current. All of this runs as `git
 - **Rejected push?** `git -C sis-brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
 - **Conflicts are rare by design.** Each ticket owns its folder, so two people on two tickets never collide. `index.jsonl` is shared but append-only, and `merge=union` resolves it automatically. A genuine conflict means two sessions worked the same ticket: stop and ask the human which record is right.
 - Everyone commits straight to `main`. The brain is a record, not code — there is no review gate, because a gate would stop it being current.
-- `metrics/`, `current.json`, `dashboard/dist/` and `codebase/generated/` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
+- `metrics/`, `current.json`, `dashboard/dist/` and `codebase/generated/` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket used.
 
 ## What must never be written to the brain
 
@@ -116,6 +116,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     "epic": { "key": "GSIS-2491", "name": "Exam Controller App" },
     "sprint": { "name": "Sustainment Sprint 21", "start": "2026-09-16", "end": "2026-09-29" },
     "assignee": "Display Name",
+    "estimate": "3h",
     "refreshed_at": "2026-09-16T09:10:00Z"
   },
   "status": "PLANNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
@@ -171,7 +172,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 }
 ```
 
-- **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name.
+- **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. The dashboard compares it with the AI's working time.
 - `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
 - A PR stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
 - `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `evaluated_head` is each changed repo's `HEAD` when the evaluator ran; a PR is raised only while `HEAD` still equals it.
@@ -314,10 +315,10 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
 
 ## Dashboard
 
-The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: what is in progress and who it is waiting on, delivery by sprint and epic, the evaluator's first-pass rate, time and API-equivalent cost by stage, and per ticket the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
+The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: what is in progress and who it is waiting on, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on QA or an SME for packet answers, waiting on the developer, or idle. Per ticket it shows the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
-- `dashboard/prices.json` holds per-model USD prices per million tokens. Cost is labelled **API-equivalent**: the team may be on a subscription, so it is what the work would cost at list API prices, not a bill.
+- **No money figures on the page.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. The data is kept: `dashboard/prices.json` holds list API prices per model, and each build writes the API-equivalent cost per ticket and stage to `dashboard/dist/costs.json` and prints the total in its summary, for the maintainers. It is never embedded in or published with the page. Tokens stay in each ticket's committed `metrics.json`.
 - `dashboard/artifact.json` holds the published page's URL and owner. **Only the owner can update the page**; everyone else can view it.
 - The page is as current as the last publish. Publishing never changes a ticket record.
 
