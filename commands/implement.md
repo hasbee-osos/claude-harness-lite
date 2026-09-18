@@ -6,7 +6,7 @@ allowed-tools: Task, Read, Write, Edit, Glob, Grep, Bash
 
 # /implement — implementation stage only
 
-Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `ground-rules`, `workspace` and `brain` skills first, and resume from the brain folder if one exists.
+Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `harness-core` and `brain` skills first, and resume from the brain folder if one exists.
 
 1. Require the current analysis and design in the ticket folder (`state.json` `artifacts`). If missing, tell the user to run `/analyze` and `/design` first.
 2. Require `repos` in `state.json`. If missing, show the design's repo table, **wait for the human to confirm the repos to change**, and create the ticket branches as in `/work` steps 8–9. Then confirm, for each changed repo, that the current branch (`git -C <repo> branch --show-current`) is the ticket branch recorded in `state.json` and not a protected branch per `git-workflow`. If not, stop and ask the human — do not switch branches automatically when work could be lost.

@@ -6,7 +6,7 @@ allowed-tools: Task, Read, Write, Glob, Grep, Bash
 
 # /design — design stage only
 
-Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `ground-rules`, `workspace` and `brain` skills first, and resume from the brain folder if one exists.
+Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `harness-core` and `brain` skills first, and resume from the brain folder if one exists.
 
 1. Require the current analysis in the ticket folder (`state.json` `artifacts.analysis`). If missing, tell the user to run `/analyze` first (or provide the analysis). Do not design without an analysis.
 2. Dispatch the `engineering-harness:designer` subagent with the ticket, the analysis artifact and the locked decisions in `decisions.md`. The designer must independently verify the analysis against the repository and must not contradict a locked decision without superseding it.

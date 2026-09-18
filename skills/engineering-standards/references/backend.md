@@ -1,26 +1,8 @@
-# SIS Development Guidelines (team conventions)
+# Backend conventions (Spring Boot)
 
-**This file is the guidelines.** Edit it directly; there is no document to convert and nothing to keep in sync. It began as `SIS Development Guidelines Documentation.docx` (kept in `archive/` for history, superseded 2026-09-16), including the rules that were only visible in that document's screenshots.
-
-The guidelines are **not complete and grow continuously** — add to them here. Keeping them in the repo is what lets the harness agents follow them: they are read on every ticket, so a wrong or missing rule here produces wrong code everywhere. See `docs/maintaining-guidelines.md`.
-
-- One rule per bullet, so an agent can cite it.
-- Screenshots live in `images/` and are linked from the relevant section. They illustrate a rule; the written bullet is what agents follow, so state the rule in words too.
+**This file is part of the team's guidelines** — conventions for the Java services. Edit it directly: one rule per bullet, stated in words even when a screenshot shows it. See `docs/maintaining-guidelines.md`. Rules for every stack (dates, code hygiene) are in the `engineering-standards` skill itself.
 
 These are **project conventions**. A change that ignores them is wrong even if it compiles and its tests pass.
-
-## Database and Liquibase
-
-- Table names start with a module prefix: `sis_admin_`, `sis_student_`, `sis_exam_`, `sis_timetable_`, then `word2_word3` (e.g. `sis_admin_semester`, `sis_exam_grading_schema_config`).
-- Every table has: `id`, `structure_master` (FK to `sis_admin_structure_master`), `active_status`, `created_at`, `updated_at`, `tenant_id`, `deleted`.
-- **Every database modification needs a new Liquibase script. Hibernate auto-update is never used.**
-- Foreign keys use a `preConditions`/`sqlCheck` guard on `pg_constraint` (checking `conname LIKE 'fk_<table>_on_<column>%'`) with `onFail="MARK_RAN" onError="MARK_RAN"`, then `addForeignKeyConstraint` named `fk_<table>_on_<column>`.
-- Liquibase folder structure ([screenshot](images/liquibase-folder-structure.png)): under `V2`, the folders are `1-table_modifications`, `2-headers`, `3-navigations`. Table creations, modifications **and insertions** all go in `1-table_modifications`. Do not mirror the module structure inside. Files are picked up automatically — never register them anywhere, and never put "changelog" in a file name.
-- Script numbering: the next available number, exactly 6 digits, then a description — e.g. `000002-evaluation-criteria-navigation.xml`.
-- Column types: `VARCHAR(255)` for most text and for enums; `VARCHAR(1000)` for descriptions and remarks; `TEXT` (or `VARCHAR(10000)`+) for rich-text editor content; `double precision` for floats; copy `id` definitions from an existing script. Column length is mostly not restricted in the DB — validate on the frontend instead (titles: 255 in FE).
-- Ask the PO for character limits on titles and other fields, and update the header Liquibase script accordingly.
-- If code generation is automatic, add an entry to the Document code master.
-- Lists (semesters, programs, main exams) always get a Liquibase-created table; follow how main exam was done.
 
 ## Entities, services and DTOs
 
@@ -80,42 +62,11 @@ These are **project conventions**. A change that ignores them is wrong even if i
   Where the service extends `BaseService` rather than `MasterBaseService`, call `MiscUtils.checkUsagesBeforeDelete(entity, new String[]{})` first, then `<Service>.super.preDelete(entity)`.
 - `MiscUtils.getEntityUsages(entity, checkIgnoredTables)` returns readable placeholders for every place an entity is referenced. Use it in `preUpdateEntity` too, throwing `GearsException(GearsResponseStatus.RECORD_IN_USE_ERROR, "message.common.alreadyInUseErrorUpdate", errorMetaData)` with `usedInPlaces` in the metadata (preferred, for structured frontend handling) or the list form. The Angular `GearsAlertService` turns `RECORD_IN_USE_ERROR` into a translated message centrally; components can override `onDataUpdateError` for update flows.
 
-## Frontend conventions
-
-- **Always use the common FE and BE components** — tables, headers, side drawers, buttons, drag and drop. Never build a custom version of something common; if a common component is missing, create one. Discuss any change to a common component with the lead.
-- Child tables use the common table component with inline edits. On a parent+child page the parent table shows **5** records per page and the child/details table **10** ([screenshot](images/parent-child-table-pagination.png)).
-- Expandable/collapsible table: `src/@gears-commons/component/data-table-expandable-collapsable/…`; every frontend service must implement `getChildTableContextPath()`. Child rows arrive as each parent record's `expandableCollapsableChildDataList`. The list page gets **Expand All / Collapse All** buttons above the table ([screenshot](images/expandable-table-ui.png)), and each parent row expands into the child table inline ([screenshot](images/expandable-table-child-rows.png)). Component usage ([screenshot](images/expandable-table-component-inputs.png)):
-
-  ```html
-  <gears-data-table-expandable-collapsable class="mt-4"
-      [dataSource]="dataList" [overriddenValues]="overriddenValues" [loading]="loading"
-      [component]="component" [headers]="headers"
-      [childTableHeaders]="childTableHeaders" [childTableComponent]="childTableComponent"
-      [childTableModule]="childTableModule" [childTableDataSource]="childTableDataList"
-      [(filter)]="filter" [paginationMetaData]="metaDataCoursePreRegisterOffer"
-      [module]="studentModule" (filterChange)="onFilterChanged($event)"
-      (actionPicked)="onActionPicked($event)" [breakPreLine]="false">
-  </gears-data-table-expandable-collapsable>
-  ```
-- Multi-line headers: `src/@gears-commons/component/header/page-multi-line-header`.
-- Inline edit bulk actions: `showDeleteBulkDialogForRecordList` (delete, in `BaseListViewPage.ts`) and `saveBulk()` (save-all, in `base-crud-service.ts`), with backend `POST /bulk` and `DELETE /bulk` endpoints (see `EvaluationType*`; soft delete in batch, permission-checked with `PreAuthorizeGrantService.checkPermission`). From those base classes ([`BaseListViewPage`](images/show-delete-bulk-dialog.png), [`BaseCrudService`](images/base-crud-service-bulk.png)):
-  - `showDeleteBulkDialogForRecordList(selectedRows, filter?)` opens the shared delete dialog (`_gearsDialogService.openDeleteDialog(this.component)`), and only on `'confirmed'` removes unsaved rows (those without an id) from the list and calls `deleteBulk(idNotNullList, currentFilter)` for the saved ones.
-  - `BaseCrudService.saveBulk(requestBody)` posts to `<apiBaseUrl>/<getContextPath()>/bulk` after `ObjectUtils.setContextIdsIntoRequestBody`, and `deleteBulk` sends `DELETE` to the same `/bulk` path with the id list as the body. Context ids are always set through `ObjectUtils`, never by hand.
-- **Always show a delete confirmation dialog**, and a cancel confirmation dialog when cancelling an add form containing data.
-- Booleans (Yes/No) use the active toggle switch. Add/View/Edit pages carry the active-status toggle in the header unless there is a specific reason not to.
-- Show attachments whenever attachments are used.
-
 ## Error handling
 
 Translatable backend errors:
 1. Use `GearsResponseStatus.CUSTOM_MESSAGE_ERROR`.
 2. Add the message to the language file under `error` and throw with its path: `throw new GearsException(GearsResponseStatus.CUSTOM_MESSAGE_ERROR, "admin.error.entityAssignToSomeStyPlans");`
-
-## Dates and times
-
-- Store all dates and datetimes in **GMT+0**. Convert for display on the device, and for emails convert to the campus time zone.
-- Backend: `DateUtils.convertTimeBasedCampusTimeZone()`. Frontend: `DateTimeUtils.convertTimeBasedDeviceTimeZone()`.
-- Date-range filters use `DateUtils.getStartOfDay(date)` and `DateUtils.getEndOfDay(date)` so full days are covered (`>= fromDate`, `<= toDate`).
 
 ## Logging
 
@@ -138,17 +89,9 @@ Translatable backend errors:
 
 ## Business config service
 
-- Frontend reads policy values through `PolicyParameterService.getPolicyValueByCode`.
 - Backend uses `businessConfigClient.readConfig(policy_code, module, null, null, null, tenant_id, university_assignment_id, campus_assignment_id)` (see `ApplicationAttachmentServiceImpl.getAttachmentList`).
-- Config service changelog layout ([screenshot](images/config-service-changelog-structure.png)), under `resources/db.changelog` with `db.changelog-master.xml` alongside: `1-table_modifications`, `2-insert_data_policy_type`, `3-insert_data_app_module`, and `4-insert_data_policy_configs` split by module (`01-administration`, `02-admission`, `03-finance`, `04-student`, `05-faculty`, `06-timetable`, `07-examination`).
-- Set `sort_order` on `bc_config_template_field` rows so fields appear in the intended order in the frontend list view (1 = first column).
 - Inactive policy config is ignored wherever it would otherwise apply.
 
 ## Scheduler service
 
 `https://github.com/pbsgears/sis-scheduler-service`, JDK 17. Uncomment the local `application.yml` values, add a `case` to the switch in `SisSchedularApplication.java` for a new job, rebuild the jar and run `java -jar sis-scheduler-0.0.1-SNAPSHOT.jar <parameter_name>`.
-
-## Code hygiene
-
-- **No commented-out code** in frontend or backend. No `console.log` in frontend code. No unwanted whitespace.
-- Review your own PR as soon as it is created and push fixes before someone else reviews it.

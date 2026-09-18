@@ -1,7 +1,7 @@
 # Analysis
 
 Ticket: <ticket-id>
-Work type: bug | feature  <!-- per work-types; delete the sections marked for the other type -->
+Work type: bug | feature  <!-- per harness-core → Work types; delete the sections marked for the other type -->
 
 ## Problem
 
@@ -49,7 +49,7 @@ Flow: <e.g. frontend `x.component.ts` → `GET /api/x` → admin-backend `XContr
 
 Scope: <in scope; explicitly out of scope; assumptions>
 
-Size: <fits one run | too big — proposed slices below, per work-types>
+Size: <fits one run | too big — proposed slices below, per harness-core → Work types>
 
 <Proposed slices, only if too big: slice, its ACs, repos, order.>
 

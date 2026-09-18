@@ -20,7 +20,7 @@
    | <concrete case, e.g. "applicant rejected the invitation, schedule is cancelled"> | |
    | <edge case> | |
 
-<Only if the story is too big for one run (work-types): **Proposed split** — please confirm, or tell us to build it as one:
+<Only if the story is too big for one run (harness-core → Work types): **Proposed split** — please confirm, or tell us to build it as one:
 | Slice | Delivers (AC) | Order |
 |---|---|---|
 | <slice 1> | AC-1, AC-2 | first |>

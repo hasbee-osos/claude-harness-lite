@@ -2,7 +2,7 @@
 
 **This file is the guidelines.** Edit it directly. It began as the six PDFs now in `archive/java-code review guideline/` (superseded 2026-09-16); those PDFs are text only, so no diagrams or figures were lost.
 
-This is general Java guidance; **project-specific rules in [`engineering-standards/references/sis-development-guidelines.md`](../../engineering-standards/references/sis-development-guidelines.md) win where the two differ.** See `docs/maintaining-guidelines.md`.
+This is general Java guidance; **project-specific rules in [`backend.md`](backend.md) and the `engineering-standards` skill win where the two differ.** See `docs/maintaining-guidelines.md`.
 
 ## Code structure and readability
 
