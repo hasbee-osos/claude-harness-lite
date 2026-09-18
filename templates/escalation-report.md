@@ -8,7 +8,7 @@ BLOCKED
 
 ## Reason
 
-<human intervention required because... (e.g. evaluator did not reach PASS after 3 iterations; Jira unavailable; dirty working tree)>
+<human intervention required because... (e.g. the final fix round could not close blocking finding E-2; a finding needs work outside the plan; Jira unavailable; dirty working tree)>
 
 ## Blocking Issues
 

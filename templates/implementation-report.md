@@ -2,6 +2,7 @@
 
 Ticket: <ticket-id>
 Iteration: <n>
+Final fix round: <yes — no evaluation follows; the human reviewer checks it | no>
 Branch: <ticket branch, same in every changed repo>
 
 ## <repo-folder>
@@ -13,6 +14,12 @@ Branch: <ticket branch, same in every changed repo>
 ### Tests
 
 - <new/modified tests and what they pin: regression test (bug) or one test per AC-n (feature), plus characterization tests>
+
+| Touch point (method / class / component) | Unit test (updated or created) |
+|---|---|
+| <`Class#method` or component> | <`TestClass#test` — updated / created> |
+
+<Any touch point without a unit test: name it and the reason (no behaviour change, or cannot be unit-tested).>
 
 ### Verification Evidence
 
@@ -56,6 +63,14 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 ## Findings
 
 <unrelated issues discovered (not fixed), or "None.">
+
+## Blocking findings addressed (final fix round only)
+
+<omit unless this is the final fix round. One row per blocking finding from the last evaluation.>
+
+| Finding | Status | Fix | Executed test that covers it |
+|---|---|---|---|
+| <E-n> | closed / open | <file/symbol> | <command and real result> |
 
 ## Codebase map corrections
 
