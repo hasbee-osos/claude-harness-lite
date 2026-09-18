@@ -95,7 +95,7 @@ Use no extra flags, and keep the default permission mode so you approve each com
 | `/work <ticket> plan` | Stops once the plan is written. Use it as a cheap check of the root cause or scope and the repos before a full run |
 | `/work` | No ticket given: continues the ticket you were last working on |
 | `/brain` | Lists recent tickets from the brain. Read-only |
-| `/brain <ticket>` | Shows a ticket's status, timeline, locked decisions, iterations, cost and PRs. Read-only |
+| `/brain <ticket>` | Shows a ticket's status, timeline, locked decisions, iterations, token usage and PRs. Read-only |
 | `/brain publish` | Rebuilds and republishes the leadership dashboard. `/work` also does this whenever a run stops |
 
 ### What `/work` does, and where it waits for you
@@ -150,9 +150,9 @@ Each ticket gets one folder, `tickets/<TICKET-ID>/`, which holds:
 - `journal.jsonl`: the append-only timeline.
 - `decisions.md`: the numbered, locked decisions with their evidence.
 - The plan, implementation reports, evaluations, PR descriptions and any QA/SME packet.
-- `metrics.json`: tokens, time and cost.
+- `metrics.json`: tokens and time used.
 
-The same files feed a leadership dashboard on claude.ai.
+The same files feed a leadership dashboard on claude.ai. It shows what was delivered, what the Evaluator caught, AI working time against the Jira estimate, and where the elapsed time went (AI working, waiting on QA/SME, waiting on the developer, idle). It shows no money figures, because the AI runs on the team's subscription.
 
 The brain also holds the **codebase map**, `codebase/`. It has short notes per repo (layout, where things live, build and test commands, pitfalls), plus indexes rebuilt after every fetch that link a screen's menu label to its route, component, API and controller. The Planner and Implementor start from it instead of rediscovering the code each ticket, but they still cite the code itself. When they find the map wrong, the notes are corrected. It is being piloted on the frontend and admin-backend.
 
