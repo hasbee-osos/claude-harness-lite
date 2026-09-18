@@ -1,6 +1,6 @@
 ---
 name: engineering-standards
-description: How to change this product's code - the team's own conventions for Spring Boot, Angular and PostgreSQL/Liquibase (base classes, authorization, Liquibase scripts, usage checks, common components, error handling, GMT+0 dates), the smallest-safe-change principle, and risk-based testing including characterization tests. Read before designing, implementing or evaluating a change.
+description: How to change this product's code - the team's own conventions for Spring Boot, Angular and PostgreSQL/Liquibase (base classes, authorization, Liquibase scripts, usage checks, common components, error handling, GMT+0 dates), the smallest-safe-change principle, and risk-based testing including characterization tests. Read before planning, implementing or evaluating a change.
 ---
 
 # Engineering standards
@@ -9,7 +9,7 @@ The team's written conventions **outrank generic best practice**. A change that 
 
 ## Conventions for the stack you touch
 
-Read the reference for each part of the stack the change touches, before designing, implementing or reviewing it. They are the team's guidelines, maintained in this repo (`docs/maintaining-guidelines.md`).
+Read the reference for each part of the stack the change touches, before planning, implementing or reviewing it. They are the team's guidelines, maintained in this repo (`docs/maintaining-guidelines.md`).
 
 | The change touches | Read |
 |---|---|

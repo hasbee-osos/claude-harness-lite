@@ -1,11 +1,11 @@
 ---
 name: input-packets
-description: When analysis or design stops on open questions, write a paste-ready Jira comment for the people who can answer them - qa-packet.md for bugs (QA), sme-packet.md for stories, tasks and features (subject-matter expert) - then read the answers back from Jira on resume. Use whenever a stage returns NEEDS_INPUT.
+description: When the plan stops on open questions, write a paste-ready Jira comment for the people who can answer them - qa-packet.md for bugs (QA), sme-packet.md for stories, tasks and features (subject-matter expert) - then read the answers back from Jira on resume. Use whenever a stage returns NEEDS_INPUT.
 ---
 
 # Input packets
 
-A ticket that stops on open questions is only unblocked when the right person answers them, and that person works in Jira, not in a terminal. So whenever analysis or design returns `NEEDS_INPUT`, the orchestrator writes a **packet**: a short, paste-ready Jira comment the developer copies onto the ticket. The harness has read-only Jira access, so a human always does the posting.
+A ticket that stops on open questions is only unblocked when the right person answers them, and that person works in Jira, not in a terminal. So whenever the Planner returns `NEEDS_INPUT`, the orchestrator writes a **packet**: a short, paste-ready Jira comment the developer copies onto the ticket. The harness has read-only Jira access, so a human always does the posting.
 
 ## Which packet
 
@@ -48,7 +48,7 @@ When `/work` resumes a ticket whose `blocked_on` names a packet:
    - An unanswered, unclear or contradictory answer is marked as such. It is never guessed.
 3. **The developer confirms the mapping.** Then record **Answers received** (`brain`).
 4. An answer that settles a choice becomes a decision record, citing the Jira comment as evidence. Examples: who receives a notification, what a business rule is, or that the defect no longer reproduces. If it reverses an earlier decision, supersede that decision.
-5. Continue from the stage that stopped. Re-run that stage with the answers, writing its artifact as the next revision (`analysis-2.md`). Never overwrite the earlier artifact.
+5. Continue from the stage that stopped. Re-run that stage with the answers, writing its artifact as the next revision (`plan-2.md`). Never overwrite the earlier artifact.
 6. If answers are missing, stop again. Show which questions are still open, and write no new packet unless the questions changed.
 
 A bug that QA confirms no longer reproduces goes to the human to close. Record **Ticket closed** (`brain`) only when the human confirms.

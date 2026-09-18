@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "engineering-harness",
-      "description": "Jira-driven engineering harness: analyze, design, implement, evaluate, PR.",
+      "description": "Jira-driven engineering harness: plan, implement, evaluate, PR - light or full track by ticket size.",
       "source": "./"
     }
   ]

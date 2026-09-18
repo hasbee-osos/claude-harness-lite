@@ -4,7 +4,7 @@ Decisions live in the ticket folder's `decisions.md` (see the `brain` skill), ap
 
 ```markdown
 ### D-<n> — <one-line statement of what was decided>
-- **Stage:** analyze | design | implement | evaluate | pr, iteration <n>
+- **Stage:** plan | implement | evaluate | pr, iteration <n>
 - **Decided by:** <agent or harness> · confirmed by human <UTC timestamp, or "not required">
 - **Options considered:** <the realistic alternatives, separated by semicolons>
 - **Why:** <the reason this option won — consequences, not restated intent>
@@ -27,10 +27,10 @@ Decisions live in the ticket folder's `decisions.md` (see the `brain` skill), ap
 
 ```markdown
 ### D-4 — Add a characterization test for the existing export before changing the filter
-- **Stage:** design, iteration 1
-- **Decided by:** designer · confirmed by human 2026-09-16T10:44Z
+- **Stage:** plan, iteration 1
+- **Decided by:** planner · confirmed by human 2026-09-16T10:44Z
 - **Options considered:** rely on the existing unit tests; add a characterization test over the current CSV output; manual QA only
-- **Why:** the existing tests assert on mocks and would still pass if the export changed shape, so they cannot protect the regression surface named in the analysis
+- **Why:** the existing tests assert on mocks and would still pass if the export changed shape, so they cannot protect the regression surface named in the plan
 - **Convention cited:** `engineering-standards` → Testing → capture current behaviour before changing shared output
 - **Evidence:** `sis-product-sis-admin-backend/src/test/java/.../ExportServiceTest.java:38` asserts only on the mocked repository call
 - **Status:** LOCKED

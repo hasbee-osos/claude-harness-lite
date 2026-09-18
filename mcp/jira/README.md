@@ -64,7 +64,7 @@ Limits:
 
 ## If no Jira MCP is configured
 
-The harness degrades gracefully: `/work` and `/analyze` ask the user to paste the ticket content, record that context was manually provided, and continue. Nothing is fabricated.
+The harness degrades gracefully: `/work` asks the user to paste the ticket content, record that context was manually provided, and continue. Nothing is fabricated.
 
 ## Extension points (not implemented yet — do not fake them)
 

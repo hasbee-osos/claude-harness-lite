@@ -1,13 +1,13 @@
 ---
 name: jira-attachments
-description: How the harness reads a Jira ticket's attachments - list them, download them through the read-only Atlassian MCP, turn screen recordings into still frames, and hand images and frames to the Analyzer as evidence. No per-developer setup, tokens or installs. Use whenever a ticket has attachments, which is nearly always.
+description: How the harness reads a Jira ticket's attachments - list them, download them through the read-only Atlassian MCP, turn screen recordings into still frames, and hand images and frames to the Planner as evidence. No per-developer setup, tokens or installs. Use whenever a ticket has attachments, which is nearly always.
 ---
 
 # Jira attachments
 
 Screen recordings and screenshots are often the best evidence a ticket has. They show the exact screen, the data, the toast that appeared or the notification that didn't. The harness reads them on every ticket that has them. It never analyzes a ticket with its attachments silently skipped.
 
-Only the **orchestrator** (the `/work` or `/analyze` session) fetches attachments, because subagents do not have the Atlassian MCP tools. The Analyzer reads the files the orchestrator prepared.
+Only the **orchestrator** (the `/work` session) fetches attachments, because subagents do not have the Atlassian MCP tools. The Planner reads the files the orchestrator prepared.
 
 ## Nothing to set up
 
@@ -24,8 +24,8 @@ The script is `scripts/attachments.js` in this skill's directory. Run it as `nod
    | Type | Action |
    |---|---|
    | `video/*` | download, then extract frames |
-   | `image/png`, `jpeg`, `gif`, `webp` | download; the Analyzer reads it directly |
-   | `application/pdf`, `text/*`, `.log`, `.json`, `.csv` | download; the Analyzer reads it directly |
+   | `image/png`, `jpeg`, `gif`, `webp` | download; the Planner reads it directly |
+   | `application/pdf`, `text/*`, `.log`, `.json`, `.csv` | download; the Planner reads it directly |
    | `image/svg+xml` under 5 KB | skip (Jira emoji and status icons) |
    | anything else, or over 300 MB | don't fetch; list it as unread |
 
@@ -38,12 +38,12 @@ The script is `scripts/attachments.js` in this skill's directory. Run it as `nod
    - It writes `<name>.frames/` with up to 40 JPEGs named by timestamp (`f07-01m12.4s.jpg`), plus `index.md`.
    - Frames are taken just after each on-screen change settles, plus the first and last frame, and at least one every 10 s.
    - It prints the absolute frame paths.
-5. **Hand off.** Give the Analyzer the absolute paths of the images, documents and frame folders, with each file's original filename and what the ticket says it shows ("Refer the below attachment" under Issue 1, …).
+5. **Hand off.** Give the Planner the absolute paths of the images, documents and frame folders, with each file's original filename and what the ticket says it shows ("Refer the below attachment" under Issue 1, …).
 
-## What the Analyzer does with them
+## What the Planner does with them
 
-- Read the frames in order and note what each step of the reproduction shows. Cite `<filename> @ 01:12` in `analysis.md` under **Attachments**.
-- Compare the recording with the written steps. A mismatch goes in the analysis: different screen, different data, a step the text leaves out, or a different environment in the address bar.
+- Read the frames in order and note what each step of the reproduction shows. Cite `<filename> @ 01:12` in the plan under **Attachments**.
+- Compare the recording with the written steps. A mismatch goes in the plan: different screen, different data, a step the text leaves out, or a different environment in the address bar.
 - Record the **environment and build** the recording was made on when visible (URL host, date on the taskbar). Whether a later fix is already in that environment often depends on it.
 - Frames can miss something shown for under ~1 s, and there is no audio. Say so when a conclusion depends on a brief toast.
 
@@ -58,4 +58,4 @@ Recordings show real names, email addresses, student records and other people's 
 
 ## When it cannot be done
 
-If listing, downloading or frame extraction fails, carry on with the analysis. Put the failure under **Attachments** in `analysis.md`: which file, what failed, and the exact error. When the root cause or a requirement depends on what a recording would show, raise it as an Open Question. Never describe an attachment you did not read.
+If listing, downloading or frame extraction fails, carry on with planning. Put the failure under **Attachments** in the plan: which file, what failed, and the exact error. When the root cause or a requirement depends on what a recording would show, raise it as an Open Question. Never describe an attachment you did not read.

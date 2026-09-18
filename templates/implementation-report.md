@@ -41,7 +41,7 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 
 ## Cross-Repo Consistency
 
-<how the contracts from the design match on both sides, with file references; or "Single repo.">
+<how the contracts from the plan match on both sides, with file references; or "Single repo.">
 
 ## Decisions
 
@@ -49,7 +49,7 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 - **New:** <decisions locked during implementation — typically a convention deviation — each written in full into `decisions.md`>
 - **Contradicted:** <"None." — or stop and report; an implementation must not contradict a LOCKED decision without superseding it>
 
-## Deviations from Design
+## Deviations from Plan
 
 <deviations with justification, or "None.">
 
