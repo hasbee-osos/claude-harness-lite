@@ -23,9 +23,9 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── runs.jsonl             ← one record per collection window (telemetry)
 │   └── harness.prom           ← Prometheus textfile exposition
 ├── dashboard/                 ← the leadership dashboard (see Dashboard)
-│   ├── build.js, template.html   ← committed
+│   ├── build.js, template.html, prices.json   ← committed
 │   ├── artifact.json          ← the published page's URL — committed
-│   └── dist/                  ← generated page — NOT committed
+│   └── dist/                  ← generated page and costs.json — NOT committed
 ├── codebase/                  ← the codebase map (see Codebase map)
 │   ├── README.md, build.js, repos.json   ← committed
 │   ├── <repo>.md              ← hand-written notes per repo — committed
@@ -318,7 +318,7 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
 The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: what is in progress and who it is waiting on, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on QA or an SME for packet answers, waiting on the developer, or idle. Per ticket it shows the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
-- **No money figures.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. Token usage stays in `metrics.json` and `/brain <ticket>` for developers.
+- **No money figures on the page.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. The data is kept: `dashboard/prices.json` holds list API prices per model, and each build writes the API-equivalent cost per ticket and stage to `dashboard/dist/costs.json` and prints the total in its summary, for the maintainers. It is never embedded in or published with the page. Tokens stay in each ticket's committed `metrics.json`.
 - `dashboard/artifact.json` holds the published page's URL and owner. **Only the owner can update the page**; everyone else can view it.
 - The page is as current as the last publish. Publishing never changes a ticket record.
 
