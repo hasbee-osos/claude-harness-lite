@@ -20,6 +20,7 @@ Follow `harness-core`, `engineering-standards` and `git-workflow` (preloaded; re
 - **Change only the repos recorded as `change` in `state.json` `repos`.** Every other repo is read-only context. If the plan needs a repo that isn't listed, stop and report.
 - In each of those repos, the current branch must be the ticket branch recorded in `state.json`, and not a protected branch per `git-workflow` (check with `git -C <repo> branch --show-current`). If not, stop and report instead of switching branches yourself.
 - Run every git command as `git -C <repo> …` with a literal path.
+- **The codebase notes for each changed repo** (`sis-brain/codebase/<repo>.md`, if present) give the build and test commands that work in this workspace and the known environment problems. Start from them instead of rediscovering them. Time-box a build that makes no progress, as the notes say, and report it as an environment gap rather than leaving it running.
 
 ## Rules
 
@@ -45,4 +46,4 @@ Inspect the final diff of each changed repo (`git -C <repo> diff`) before report
 
 ## Output
 
-Return a single implementation report in your final message, exactly following `templates/implementation-report.md` (one section per changed repository with Changes / Tests / Verification Evidence / Diff Summary, then Acceptance Criteria for a feature / Cross-Repo Consistency / Deviations / Findings / Status). The orchestrator will write it to `sis-brain/tickets/<ticket>/implementation-report-<iteration>.md`.
+Return a single implementation report in your final message, exactly following `templates/implementation-report.md` (one section per changed repository with Changes / Tests / Verification Evidence / Diff Summary, then Acceptance Criteria for a feature / Cross-Repo Consistency / Deviations / Findings / Codebase map corrections when you have any / Status). A correction is something you verified, such as a build command that differs from the notes or a pitfall they don't mention. The orchestrator will write it to `sis-brain/tickets/<ticket>/implementation-report-<iteration>.md`.

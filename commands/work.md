@@ -16,6 +16,8 @@ This is not optional bookkeeping. It is what lets the next session continue the 
 
 **Everything the run writes to the brain — files, journal events, `state.json` fields, `index.jsonl` lines, `current.json`, commits and pushes — is specified once, in `brain` → "What each stage records".** The steps below name the moment in **bold**; record it exactly as that table says. Decision records and their locking rules are in `brain` too.
 
+When a plan or an implementation report includes **Codebase map corrections**, apply them as `brain` → Codebase map says, right after recording that artifact.
+
 Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an escalation — record **Run stops**. Its last part republishes the leadership dashboard (`brain` → Publishing); that is best-effort and never changes the run's outcome.
 
 ## Starting or resuming
@@ -41,8 +43,8 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
 ## Plan
 
 4. **Work type, flow and branch name.** Propose the work type from the Jira issue type (`harness-core` → Work types), and, following `git-workflow` flow selection, the flow, branch name (`bugfix` or `feature`), source branch and PR targets per stage. **Wait for the human to confirm**, then record **Work type, flow and branch confirmed**. Hotfix, OSOS and dormant-line tickets: escalate.
-5. **Fetch.** `git -C <repo> fetch origin` for every workspace repo, so planning reads `origin/<source_branch>`. Do not change any checkout.
-6. **Planner.** Dispatch `engineering-harness:planner` with the ticket, Jira context, `work_type`, repo list, `source_branch`, the local attachment paths (and any that could not be read, with the reason), the locked decisions, and — when resuming — the previous plan and the confirmed answers, or the track the human chose. Record **Plan written**.
+5. **Fetch.** `git -C <repo> fetch origin` for every workspace repo, so planning reads `origin/<source_branch>`. Do not change any checkout. Then rebuild the codebase map (`brain` → Codebase map).
+6. **Planner.** Dispatch `engineering-harness:planner` with the ticket, Jira context, `work_type`, repo list, `source_branch`, the codebase map path (`sis-brain/codebase/`) when it exists, the local attachment paths (and any that could not be read, with the reason), the locked decisions, and — when resuming — the previous plan and the confirmed answers, or the track the human chose. Record **Plan written**.
    - `NEEDS_INPUT`: write the input packet for the questions QA or the SME can answer (`input-packets`), present every open question (developer-only ones in the terminal) and the packet path, and stop.
    - Invoked with `plan`: present the plan summary — root cause or scope, repos, proposed track — and stop.
 7. **Confirm repos and track.** Show the plan's repo table (change vs context), the cross-repo contracts, and the proposed track with its reason against `harness-core` → Tracks. **Wait for the human to confirm both**, then record **Repos and track confirmed**. If the human moves a light proposal to full, re-run step 6 for the full plan before continuing.
@@ -53,7 +55,7 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
    - Check `git -C <repo> status --porcelain`. If the repo has uncommitted changes, **do not overwrite, stash or discard them** — stop and ask.
    - If the ticket branch already exists locally or on origin, reuse it (`git -C <repo> switch <branch>`); otherwise `git -C <repo> switch -c <branch> origin/<source_branch>`.
    - Record **Branch created or reused**.
-9. **Implementor.** Dispatch `engineering-harness:implementor` with the ticket, the plan, `decisions.md`, `state.json` and the current iteration (on a later iteration, only the evaluator's **blocking findings** as its scope). Record **Implementation reported**. If it stops because a light ticket outgrew the light criteria, propose moving to the full track; on the human's yes, record **Track changed** and go to step 6.
+9. **Implementor.** Dispatch `engineering-harness:implementor` with the ticket, the plan, `decisions.md`, `state.json`, the codebase notes of each changed repo when they exist, and the current iteration (on a later iteration, only the evaluator's **blocking findings** as its scope). Record **Implementation reported**. If it stops because a light ticket outgrew the light criteria, propose moving to the full track; on the human's yes, record **Track changed** and go to step 6.
 10. **Evaluator.** Dispatch `engineering-harness:evaluator` with the ticket, all artifacts, `decisions.md`, `state.json` and the current iteration. Record **Evaluation returned**.
 11. **Branch on the verdict.**
     - `PASS` → step 12.

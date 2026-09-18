@@ -117,6 +117,10 @@ Steps:
 
 <Low | Medium | High — one-line justification>
 
+## Codebase map corrections
+
+<omit this section unless the map was wrong, missing or stale for this ticket. One line each: `<repo>` — what the map says or lacks → what the code shows (`<repo>/<path>`)>.
+
 ## Status
 
 READY_FOR_IMPLEMENTATION | NEEDS_INPUT
