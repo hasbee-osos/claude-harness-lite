@@ -43,7 +43,7 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
 ## Plan
 
 4. **Work type, flow and branch name.** Propose the work type from the Jira issue type (`harness-core` → Work types), and, following `git-workflow` flow selection, the flow, branch name (`bugfix` or `feature`), source branch and PR targets per stage. **Wait for the human to confirm**, then record **Work type, flow and branch confirmed**. Hotfix, OSOS and dormant-line tickets: escalate.
-5. **Fetch.** `git -C <repo> fetch origin` for every workspace repo, so planning reads `origin/<source_branch>`. Do not change any checkout. Then rebuild the codebase map (`brain` → Codebase map).
+5. **Fetch.** `git -C <repo> fetch origin` for every workspace repo, so planning reads `origin/<source_branch>`. Do not change any checkout. Then rebuild the codebase map at the ticket's source branch: `node sis-brain/codebase/build.js --ref origin/<source_branch>` (`brain` → Codebase map).
 6. **Planner.** Dispatch `engineering-harness:planner` with the ticket, Jira context, `work_type`, repo list, `source_branch`, the codebase map path (`sis-brain/codebase/`) when it exists, the local attachment paths (and any that could not be read, with the reason), the locked decisions, and — when resuming — the previous plan and the confirmed answers, or the track the human chose. Record **Plan written**.
    - `NEEDS_INPUT`: write the input packet for the questions QA or the SME can answer (`input-packets`), present every open question (developer-only ones in the terminal) and the packet path, and stop.
    - Invoked with `plan`: present the plan summary — root cause or scope, repos, proposed track — and stop.
