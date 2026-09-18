@@ -30,8 +30,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
     ├── state.json             ← the resume point
     ├── journal.jsonl          ← append-only event log
     ├── decisions.md           ← locked decisions with justification
-    ├── analysis.md            ← a later revision is analysis-2.md, …
-    ├── design.md
+    ├── plan.md                ← a later revision is plan-2.md, … (tickets started before v0.4 have analysis.md and design.md instead)
     ├── qa-packet.md | sme-packet.md  ← paste-ready Jira comment when a stage needs answers (input-packets)
     ├── implementation-report-1.md, -2.md, …
     ├── evaluation-1.md, -2.md, …
@@ -53,16 +52,16 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 
 | Moment | Files written in the ticket folder | Journal events | `state.json` fields | Commit and push |
 |---|---|---|---|---|
-| **Ticket started** (no folder yet) | create the folder, `state.json` | `ticket_started` | everything known, including `jira` (see below), `status: ANALYZING` | `<ID>: ticket started` |
+| **Ticket started** (no folder yet) | create the folder, `state.json` | `ticket_started` | everything known, including `jira` (see below), `status: PLANNING` | `<ID>: ticket started` |
 | **Session resumed** | — | `session_resumed` | append to `sessions`; refresh `jira` | only with the next milestone |
 | **Work type, flow and branch confirmed** | `decisions.md` (flow decision stating the work type) | `human_confirmed`, `decision_locked` | `work_type`, `flow`, `source_branch`, `branch`, `pr_targets`, `human_confirmations` | `<ID>: flow and branch confirmed` |
-| **Analysis written** | `analysis.md` (revision → `analysis-2.md`) and, for NEEDS_INPUT, the input packet | `stage_start`, `stage_end`, `decision_locked` (root cause / scope), and `input_requested` if blocked | `analysis`, `artifacts`, `status`, `blocked_on` | `<ID>: analysis written - READY` / `- NEEDS_INPUT` |
+| **Plan written** | `plan.md` (revision → `plan-2.md`); `decisions.md` (root cause or scope; and, once Part 2 is written, approach, test strategy, contract or schema choices, deviations); the input packet for NEEDS_INPUT | `stage_start`, `stage_end` (stage `plan`), `decision_locked`, and `input_requested` if blocked | `plan`, `artifacts`, `status` (`AWAITING_REPO_CONFIRMATION` or `NEEDS_INPUT`), `blocked_on` | `<ID>: plan written - READY` / `- NEEDS_INPUT` |
 | **Answers received** for a packet | — | `input_received` | clear `blocked_on`, `status` | with the next milestone |
-| **Design written** | `design.md`, `decisions.md` (approach, test strategy, deviations), input packet if blocked | `stage_start`, `stage_end`, `decision_locked`, `input_requested` if blocked | `design`, `artifacts`, `status`, `blocked_on` | `<ID>: design written` |
-| **Repos confirmed** | `decisions.md` (repo set) | `human_confirmed`, `decision_locked` | `repos`, `context_repos`, `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos confirmed` |
+| **Repos and track confirmed** | `decisions.md` (repo set; track with its reason) | `human_confirmed` (`repos_to_change`, `track`), `decision_locked` | `repos`, `context_repos`, `track`, `max_iterations` (2 light, 3 full), `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos and track confirmed` |
+| **Track changed** (light → full) | `decisions.md` (new track decision superseding the old) | `human_confirmed`, `decision_locked`, `decision_superseded` | `track: full`, `max_iterations: 3`, `status: PLANNING` | `<ID>: moved to full track` |
 | **Branch created or reused** (per repo) | — | `branch_created` | `repos.<repo>.branch_created` | `<ID>: branches created` (once, after all repos) |
 | **Implementation reported** | `implementation-report-<n>.md`; `decisions.md` for any convention deviation | `stage_start`, `stage_end`, `decision_locked` if any | `implementation`, `artifacts`, `status: EVALUATING` | `<ID>: implementation <n>` |
-| **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status` | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
+| **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status`, `repos.<repo>.evaluated_head` (the commit evaluated in each repo) | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
 | **Escalated** (cap hit or harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
 | **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
@@ -103,7 +102,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "ticket": "GSIS-12345",
   "jira": {
     "url": "https://gearsjira.atlassian.net/browse/GSIS-12345",
@@ -114,21 +113,22 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     "assignee": "Display Name",
     "refreshed_at": "2026-09-16T09:10:00Z"
   },
-  "status": "ANALYZING | DESIGNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
+  "status": "PLANNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
   "next_action": "Re-run the implementor with the blocking findings E-1 and E-3 from evaluation-2.md",
   "blocked_on": null,
   "created_at": "2026-09-16T09:10:00Z",
   "updated_at": "2026-09-16T11:42:00Z",
   "iteration": 2,
   "max_iterations": 3,
+  "track": "light | full",
   "workspace": "C:/sis-workspace",
   "work_type": "bug | feature",
   "flow": "A",
   "source_branch": "base-development",
   "branch": "base/bugfix/GSIS-12345-short-desc",
   "repos": {
-    "sis-product-sis-admin-backend": { "role": "change", "branch_created": true },
-    "sis-product-sis-frontend":      { "role": "change", "branch_created": true }
+    "sis-product-sis-admin-backend": { "role": "change", "branch_created": true, "evaluated_head": "3f9c2e1" },
+    "sis-product-sis-frontend":      { "role": "change", "branch_created": true, "evaluated_head": "a41d07b" }
   },
   "context_repos": ["sis-product-sis-student-service"],
   "pr_targets": [
@@ -155,14 +155,12 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
   ],
   "decisions": ["D-1", "D-2", "D-3"],
   "artifacts": {
-    "analysis": "analysis.md",
+    "plan": "plan.md",
     "qa_packet": "qa-packet.md",
-    "design": "design.md",
     "implementation": "implementation-report-2.md",
     "evaluation": "evaluation-2.md"
   },
-  "analysis": "READY | NEEDS_INPUT",
-  "design": "READY | NEEDS_INPUT",
+  "plan": "READY | NEEDS_INPUT",
   "implementation": "COMPLETE | BLOCKED",
   "evaluation": "PASS | FAIL | INSUFFICIENT_EVIDENCE"
 }
@@ -171,7 +169,9 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 - **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name.
 - `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
 - A PR stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
-- A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block and set `schema_version: 2`.
+- `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `evaluated_head` is each changed repo's `HEAD` when the evaluator ran; a PR is raised only while `HEAD` still equals it.
+- A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block.
+- A `schema_version: 2` ticket was worked by the old Analyzer and Designer. On resume, keep its `analysis.md` and `design.md` as they are (never rename them); map status `ANALYZING` or `DESIGNING` to `PLANNING`; if it has no design yet, run the Planner with the existing analysis as input, and it writes `plan.md`; if it already has one, treat the design as the plan and set `track: full`. Then set `schema_version: 3`.
 
 ## `journal.jsonl` — append-only
 
@@ -179,7 +179,7 @@ One JSON object per line. Never rewrite or delete a line; a mistake is corrected
 
 ```json
 {"ts":"2026-09-16T09:10:00Z","event":"ticket_started","ticket":"GSIS-12345","session_id":"893ff923-…"}
-{"ts":"2026-09-16T10:02:11Z","event":"stage_start","stage":"design","iteration":1}
+{"ts":"2026-09-16T10:02:11Z","event":"stage_start","stage":"plan","iteration":1}
 {"ts":"2026-09-16T10:31:02Z","event":"decision_locked","id":"D-3","summary":"Fix in the service layer, not the SQL view"}
 {"ts":"2026-09-16T10:31:44Z","event":"human_confirmed","what":"repos_to_change","value":["sis-product-sis-admin-backend"]}
 {"ts":"2026-09-16T11:05:18Z","event":"evaluation","verdict":"FAIL","blocking":2,"non_blocking":1,"iteration":1}
@@ -205,7 +205,7 @@ Event vocabulary — a closed set. Do not invent events; add one here first.
 | `escalated` | the iteration cap is hit or the harness stops | `reason` |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
 
-`stage` is one of `analyze`, `design`, `implement`, `evaluate`, `pr`, `publish`. Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later.
+`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later.
 
 ## `decisions.md` — decisions locked, with justification
 
@@ -213,8 +213,8 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 ```markdown
 ### D-3 — Fix belongs in the service layer, not the SQL view
-- **Stage:** design, iteration 1
-- **Decided by:** designer · confirmed by human 2026-09-16T10:31Z
+- **Stage:** plan, iteration 1
+- **Decided by:** planner · confirmed by human 2026-09-16T10:31Z
 - **Options considered:** patch the view; filter in the service; add a DB constraint
 - **Why:** the view is shared by three reports; filtering there changes two unrelated screens
 - **Convention cited:** `engineering-standards` → business rules live in the service, not in SQL views
@@ -226,7 +226,8 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 - The work type, flow, branch name and source branch (`harness-core`, `git-workflow`).
 - The set of repos to change, and why each other repo is context only.
-- **bug:** the root cause, once the Analyzer is confident in it. **feature:** the scope — acceptance criteria in, explicitly out, assumptions — once confirmed; and a slicing decision or a recorded override when a story is too big.
+- The track (light or full), with the reason against `harness-core` → Tracks; moving to full supersedes it.
+- **bug:** the root cause, once the Planner is confident in it. **feature:** the scope — acceptance criteria in, explicitly out, assumptions — once confirmed; and a slicing decision or a recorded override when a story is too big.
 - The fix or design approach, and the alternatives rejected; for a feature, also each new contract or schema choice worth defending later.
 - The test strategy — what proves the bug is fixed or each acceptance criterion is met, and what protects the regression surface.
 - **Any deviation from a team convention**, with the justification (`engineering-standards`).
@@ -243,7 +244,7 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 `index.jsonl` — one appended line per ticket milestone (see the table above), so `/brain` can list recent work without opening every folder:
 
 ```json
-{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","title":"Applicant list shows withdrawn applicants","work_type":"bug","epic":"GSIS-2491","sprint":"Sustainment Sprint 21","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
+{"ts":"2026-09-16T11:52:00Z","ticket":"GSIS-12345","title":"Applicant list shows withdrawn applicants","work_type":"bug","track":"light","epic":"GSIS-2491","sprint":"Sustainment Sprint 21","status":"DONE","verdict":"PASS","iterations":2,"repos":["sis-product-sis-admin-backend"],"branch":"base/bugfix/GSIS-12345-short-desc","prs":1}
 ```
 
 `current.json` — overwritten, not appended, before every agent dispatch, so the telemetry collector can attribute token usage to the right ticket and stage:
@@ -256,7 +257,7 @@ Write `{}` when a ticket stops being worked on, so idle turns are not billed to 
 
 ## Finding the ticket when none is named
 
-`/design`, `/implement`, `/evaluate` and `/pr` accept an omitted ticket ID. Use the ticket in `current.json` if it names one; otherwise the ticket of the last line of `index.jsonl`; otherwise the ticket folder with the newest `state.json` `updated_at`. Say which ticket was picked and why before acting.
+`/work` accepts an omitted ticket ID. Use the ticket in `current.json` if it names one; otherwise the ticket of the last line of `index.jsonl`; otherwise the ticket folder with the newest `state.json` `updated_at`. Say which ticket was picked and why before acting.
 
 ## Resuming a ticket
 
@@ -285,11 +286,11 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
   "ticket": "GSIS-12345",
   "updated_at": "2026-09-16T11:52:00Z",
   "sessions": {
-    "893ff923-…": { "turns": 35, "tokens_by_stage": { "analyze": { "input": 74, "output": 14808, "cache_read": 1854099, "cache_creation": 226590, "thinking": 1609 } }, "tokens_by_model": { "claude-opus-5": { "…": 0 } } }
+    "893ff923-…": { "turns": 35, "tokens_by_stage": { "plan": { "input": 74, "output": 14808, "cache_read": 1854099, "cache_creation": 226590, "thinking": 1609 } }, "tokens_by_model": { "claude-opus-5": { "…": 0 } } }
   },
   "tokens": { "input": 0, "output": 0, "cache_read": 0, "cache_creation": 0, "thinking": 0 },
   "tokens_by_stage": {}, "tokens_by_model": {}, "turns": 0,
-  "stage_seconds": { "analyze": 505 },
+  "stage_seconds": { "plan": 505 },
   "iterations": 0, "verdicts": {}, "findings": { "blocking": 0, "non_blocking": 0 }
 }
 ```

@@ -97,7 +97,7 @@ Two cautions:
 Build these before anything prettier — they are the ones that answer "is the harness worth it?".
 
 1. **First-pass rate** — share of tickets where the evaluator returned `PASS` at iteration 1. `harness_iterations_total{verdict="PASS"}` against the total. The single best quality signal.
-2. **Iterations per ticket** — a distribution, not an average. A long tail means the design stage is under-specifying.
+2. **Iterations per ticket** — a distribution, not an average. A long tail means the plan is under-specifying, or tickets are running on the light track that should be full.
 3. **Escalation rate** — `harness_tickets_total{status="ESCALATED"}` over all tickets. These are the tickets the harness could not finish; read their `escalation-report.md`, not just the number.
 4. **Blocking findings per iteration** — `harness_evaluator_findings_total{severity="blocking"}`. If this is near zero on every ticket, the evaluator is not being strict enough; if it never falls between iterations, the implementor is not consuming the findings.
 5. **Tokens per ticket** — from `runs.jsonl`. Sanity-check against the manual cost of the same ticket.

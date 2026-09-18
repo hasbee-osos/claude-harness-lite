@@ -1,6 +1,6 @@
 # Maintaining the team guidelines
 
-The harness agents read the team's development guidelines on **every ticket**, for each stack the ticket touches. The guidelines are not complete and grow continuously. The Designer must name the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a blocking finding. So a rule that is wrong, missing or out of date here produces wrong code on every ticket that touches it.
+The harness agents read the team's development guidelines on **every ticket**, for each stack the ticket touches. The guidelines are not complete and grow continuously. The Planner must name the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a blocking finding. So a rule that is wrong, missing or out of date here produces wrong code on every ticket that touches it.
 
 ## Where the guidelines live
 
@@ -19,7 +19,7 @@ These Markdown files **are** the guidelines. There is no document to convert and
 ## Changing a rule
 
 1. Edit the Markdown file for the stack the rule belongs to. A rule that applies to backend and frontend alike goes in `SKILL.md`; otherwise keep it in one stack file — never write the same rule in two places. Agents read only the files for the stacks a change touches, so a rule in the wrong file is missed.
-2. Keep **one rule per bullet**, in plain words, so an agent can quote it in a design or an evaluation. Write the rule out even when a screenshot shows it.
+2. Keep **one rule per bullet**, in plain words, so an agent can quote it in a plan or an evaluation. Write the rule out even when a screenshot shows it.
 3. Adding a screenshot: put the PNG in `references/images/` with a descriptive name and link it from the bullet, in the form `([screenshot](images/NAME.png))`. The words carry the rule; the image only illustrates it.
 4. Naming a file, class or method (e.g. `MasterBaseService`, `DateUtils.getEndOfDay`) makes the rule far more usable than a general statement.
 5. Open a PR against this plugin repo. Everyone's harness picks the change up as soon as they update their copy of the plugin.

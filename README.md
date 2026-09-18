@@ -1,18 +1,18 @@
 # Claude Code Engineering Harness
 
-A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a design and a test per criterion (`skills/harness-core/SKILL.md` → Work types).
+A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a plan and a test per criterion (`skills/harness-core/SKILL.md` → Work types). The process scales with the ticket: small bugs and features run on a **light** track, larger ones on the **full** track (see Tracks).
 
 ```
 /work ABC-123
 
-Jira → Analyzer (which repos?) → Designer (plan per repo) → human confirms repos → Implementor (each repo)
-     → Evaluator (each repo + cross-repo) ── PASS ──→ PRs per repo → Human Review → Human Merge
-                                          └─ FAIL/INSUFFICIENT_EVIDENCE → bounded iteration (max 3) → escalate to human
+Jira → Planner (root cause or scope, repos, plan, proposed track) → human confirms repos + track
+     → Implementor (each repo) → Evaluator (each repo + cross-repo) ── PASS ──→ PRs per repo → Human Review → Human Merge
+                                 └─ FAIL/INSUFFICIENT_EVIDENCE → bounded iteration (light 2, full 3) → escalate to human
 ```
 
 ## Workspace
 
-The harness runs in a **workspace**: one parent folder holding clones of all product repos and the shared brain repo, with Claude started in that folder. The harness itself is **not** in the workspace: it is installed once as a Claude Code plugin (Setup, step 3) and then loads in every session. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Analyzer works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
+The harness runs in a **workspace**: one parent folder holding clones of all product repos and the shared brain repo, with Claude started in that folder. The harness itself is **not** in the workspace: it is installed once as a Claude Code plugin (Setup, step 3) and then loads in every session. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Planner works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
 
 ```text
 C:\sis-repos\                            workspace folder (any name, any path)
@@ -104,62 +104,67 @@ Keep the default permission mode, so each command is approved. If `/work` is not
 
 | Command | Purpose |
 |---|---|
-| `/work <ticket-id-or-url>` | Full workflow: Jira → analyze → design → implement → evaluate loop (max 3 iterations) → PRs → publish summary to Jira where supported |
-| `/analyze <ticket>` | Analyzer only: root cause (bug) or gap, scope and acceptance criteria (story) + which repos are involved; stops before design |
-| `/design [ticket]` | Designer only: plan per repo + test strategy; requires an analysis artifact |
-| `/implement [ticket]` | Implementor only: code + tests + verification in each confirmed repo; requires analysis + design |
-| `/evaluate [ticket]` | Evaluator only; verdict per repo and overall: PASS / FAIL / INSUFFICIENT_EVIDENCE |
+| `/work <ticket-id-or-url>` | Moves the ticket forward from wherever it stands: plan → implement ⇄ evaluate → PRs for the next stage → Jira summary where supported. Re-run it to continue after any stop. `/work <ticket> plan` stops once the plan is written |
 | `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only. `/brain publish` rebuilds and republishes the leadership dashboard on claude.ai; `/work` also republishes it whenever a run stops |
-| `/pr [ticket]` | PR creation per changed repo × target, gated on evaluator PASS; without `gh`, pushes each branch and gives a prefilled GitHub compare link + description for the human to open the PR; **never merges** |
+
+There are only two because the brain already knows where every ticket stands: `/work` reads `state.json` and does the next thing, so there is no need for a command per stage.
 
 ### How `/work` runs
-
-`/work` runs the whole flow up to the first PR stage itself. It doesn't call the other commands; it dispatches the same agents directly.
 
 ```
 /work GSIS-12345
   1. Read the ticket from Jira
-  2. Propose flow + branch name                                ⏸ human confirms
-  3. Fetch all repos; Analyzer traces the flow across repos; Designer plans per repo
-  4. Show repos to change (vs context only)                    ⏸ human confirms
+  2. Propose work type, flow + branch name                      ⏸ human confirms
+  3. Fetch all repos; the Planner traces the flow, finds the root cause or scope, and plans the change
+  4. Show repos to change (vs context only) + proposed track    ⏸ human confirms
   5. Create the ticket branch in each changed repo
-  6. Implementor → Evaluator  (FAIL → implement + evaluate again, max 3 rounds)
+  6. Implementor → Evaluator  (FAIL → implement + evaluate again; light max 2 rounds, full max 3)
   7. PR stage 1: push each branch, give a compare link per repo ⏸ human opens the PRs, pastes the URLs back
   8. Publish a summary to Jira (blocked while Jira is read-only; the record stays in sis-brain/)
 ```
 
 It stops and waits for the human when:
-- The flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
-- The repos to change need confirmation. No branch is created before that.
+- The work type, flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
+- The repos to change and the track need confirmation. No branch is created before that.
 - A repo to change has uncommitted changes, or Jira can't be read.
-- The Analyzer or Designer returns `NEEDS_INPUT`. The harness writes a paste-ready Jira comment with the questions to the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
-- 3 evaluation rounds fail. An escalation report is written.
+- The Planner returns `NEEDS_INPUT` (root cause not established, draft acceptance criteria, unclear business rules, or a story too big for one run). The harness writes a paste-ready Jira comment with the questions to the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
+- A light ticket turns out bigger than planned. You decide whether it moves to the full track.
+- The evaluation rounds run out. An escalation report is written; on a light ticket it proposes the full track.
 - A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
 
 On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to the ticket's brain folder as `pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
 
-Run manually:
-- **`/pr <ticket>` for stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, this raises the customer sandbox PRs for each repo. `/work` stops after stage 1, because days can pass between stages.
-- **The single-stage commands**, only when wanted: to re-run one stage (e.g. `/evaluate` after a manual fix), or to review each artifact before moving on. Running `/analyze <ticket>` alone is a cheap way to check the root cause (bug) or the scope and acceptance criteria (story), and the repo list, before a full run.
-
-Re-running `/work <ticket>` after an interruption — even days later, in a new session or on another machine — resumes from the brain: it prints what is done, which decisions are locked, what the human already confirmed and what happens next, then continues from there. It never re-asks a confirmation already recorded, and never redoes a stage whose artifact exists.
+Re-running `/work <ticket>` resumes from the brain — after an interruption, days later, in a new session or on another machine: it prints what is done, which decisions are locked, what the human already confirmed and what happens next, then continues from there. It never re-asks a confirmation already recorded, and never redoes a stage whose artifact exists. In particular:
+- **PR stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, `/work <ticket>` asks you to confirm that and raises the customer sandbox PRs. It stops after each stage because days can pass between them.
+- **After a manual fix.** If a ticket branch has commits the Evaluator hasn't seen, `/work` re-evaluates before raising any PR.
 
 Claude never merges, approves, force-pushes, pushes to protected branches, raises `base-development` PRs, or does hotfixes. Those stay with the human.
 
+## Tracks
+
+| | **light** | **full** |
+|---|---|---|
+| For | a bug with an established root cause, or a feature with at most 3 confirmed acceptance criteria; at most 2 repos, with at most an additive contract change; no new entity, workflow or notification event; nothing touching auth, deletion checks or existing rows | everything else |
+| Plan | understanding in full; the change, tests and AC coverage in a few lines | every section in full, including cross-repo contracts and the complete regression surface |
+| Evaluation rounds | max 2 | max 3 |
+
+The Planner proposes the track and you confirm it with the repos. The Evaluator runs on both. `skills/harness-core/SKILL.md` → Tracks has the exact criteria.
+
 ## Agents
 
-- **Analyzer** — understands the ticket against the actual code across the workspace; marks each repo as change or context; for a bug, finds the root cause; for a story, the gap, scope and numbered acceptance criteria — and flags a story too big for one run. Read-only.
-- **Designer** — independently verifies the analysis; produces the plan per repo, the cross-repo contracts, the **regression surface**, and a **risk-based test strategy**. Read-only.
-- **Implementor** — implements the design in the confirmed repos only, applies **characterization testing** in low-coverage areas, adds the regression test (bug) or a test per acceptance criterion (story), runs risk-proportionate verification in each repo, records **actual evidence** (commands + real results).
-- **Evaluator** — independent quality gate over the whole work product, per repo and cross-repo; read-only; issues exactly one verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`); only blocking findings trigger another iteration.
+- **Planner** — understands the ticket against the actual code across the workspace and plans the change in one pass: marks each repo as change or context; for a bug, the root cause and the smallest fix; for a story, the gap, scope, numbered acceptance criteria and the change that meets each — plus the cross-repo contracts, the **regression surface** and a **risk-based test strategy**, at the depth the track needs. Flags a story too big for one run. Read-only.
+- **Implementor** — implements the plan in the confirmed repos only, applies **characterization testing** in low-coverage areas, adds the regression test (bug) or a test per acceptance criterion (story), runs risk-proportionate verification in each repo, records **actual evidence** (commands + real results).
+- **Evaluator** — independent quality gate over the whole work product, per repo and cross-repo, on both tracks; read-only; issues exactly one verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`); only blocking findings trigger another iteration.
+
+Understanding and planning are one agent because splitting them made the second agent re-read the same code from an empty context. The Evaluator stays separate because its value is checking work it did not write.
 
 ## Evaluator loop
 
-`MAX_ITERATIONS = 3`. Only evaluator **blocking findings** start a new Implementor→Evaluate cycle; recommendations do not. `INSUFFICIENT_EVIDENCE` first attempts to obtain the missing evidence. After three failed iterations the harness stops and writes an escalation report for the human.
+At most 2 rounds on the light track and 3 on the full track. Only evaluator **blocking findings** start a new Implementor→Evaluate cycle; recommendations do not. `INSUFFICIENT_EVIDENCE` first attempts to obtain the missing evidence. When the rounds run out the harness stops and writes an escalation report for the human.
 
 ## Team guidelines the agents follow
 
-The team's development guidelines are Markdown in this repo and are read on **every ticket**, for each stack it touches: database and Liquibase rules, base entity/service/DTO classes, authorization, deletion and usage checks, common frontend components, error handling, dates, logging. The Designer names the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a **blocking** finding even when the code works.
+The team's development guidelines are Markdown in this repo and are read on **every ticket**, for each stack it touches: database and Liquibase rules, base entity/service/DTO classes, authorization, deletion and usage checks, common frontend components, error handling, dates, logging. The Planner names the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a **blocking** finding even when the code works.
 
 - `skills/engineering-standards/SKILL.md` — rules for every stack (dates, code hygiene), change principles and the testing standard
 - `skills/engineering-standards/references/backend.md`, `frontend.md`, `database.md` — the team's own conventions per stack (screenshots in `images/`); an agent reads the ones for the stacks a change touches
@@ -205,12 +210,12 @@ A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers
 
 ## Architecture
 
-Four agents with strictly separated responsibilities; commands orchestrate them; skills provide reusable knowledge, grouped by when it is needed — each agent preloads only the skills it uses through `skills:` in its frontmatter, and reads a stack's conventions only when the change touches that stack; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
+Three agents with separated responsibilities; `/work` orchestrates them; skills provide reusable knowledge, grouped by when it is needed — each agent preloads only the skills it uses through `skills:` in its frontmatter, and reads a stack's conventions only when the change touches that stack; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
 
 ```
 .claude-plugin/plugin.json     plugin manifest
-agents/                        analyzer, designer, implementor, evaluator
-commands/                      /work /analyze /design /implement /evaluate /pr /brain
+agents/                        planner, implementor, evaluator
+commands/                      /work /brain
 skills/                        harness-core (ground rules, workspace, bug vs feature per stage;
                                  read by every command, preloaded by every agent),
                                engineering-standards (team conventions per stack under
@@ -223,7 +228,7 @@ hooks/                         PreToolUse git-guard (protected branches, destruc
                                and jira-guard (read-only Atlassian MCP tools);
                                telemetry.js collects token and duration metrics
 mcp/jira/README.md             read-only Jira MCP integration point
-templates/                     analysis, design, implementation-report, evaluation, qa-packet, sme-packet,
+templates/                     plan, implementation-report, evaluation, qa-packet, sme-packet,
                                escalation-report, decision-record, brain-readme
 docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
 docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
@@ -231,7 +236,7 @@ CLAUDE.md                      pointer for plugin developers (not loaded by plug
 <workspace>/sis-brain/            the shared record repo: per-ticket state, journal, decisions, artifacts
 ```
 
-Model allocation: Analyzer/Designer/Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.
+Model allocation: Planner and Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.
 
 ## Piloting the harness
 
@@ -247,8 +252,8 @@ The brain is the pilot's evidence: each ticket's folder keeps the decisions, the
 | Ticket / type | |
 | Correct flow and branch proposed? | |
 | Correct repos identified (none missing, none extra)? | |
-| Root cause right (bug) / scope and acceptance criteria right (story)? (analysis) | |
-| Plan sensible and minimal? (design) | |
+| Root cause right (bug) / scope and acceptance criteria right (story)? | |
+| Plan sensible and minimal? Right track proposed? | |
 | Code quality — would you have merged it as-is? | |
 | Tests meaningful and actually run in each repo? | |
 | Every acceptance criterion actually proven (story)? | |
