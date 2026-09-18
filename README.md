@@ -1,283 +1,175 @@
-# Claude Code Engineering Harness
+# Claude Code Engineering Harness — developer cookbook
 
-A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a plan and a test per criterion (`skills/harness-core/SKILL.md` → Work types). The process scales with the ticket: small bugs and features run on a **light** track, larger ones on the **full** track (see Tracks).
+A Claude Code plugin that takes a **Jira bug or story** on the SIS product (Spring Boot + Angular + PostgreSQL) from ticket to **PRs that you review and merge**. You run one command, `/work <ticket>`. The harness plans the change against the real code, implements it, has an independent evaluator check it, and hands you compare links. It pauses for your confirmation at every decision that matters, and it records everything in a shared repo called **the brain**.
 
 ```
-/work ABC-123
+/work GSIS-12345
 
-Jira → Planner (root cause or scope, repos, plan, proposed track) → human confirms repos + track
-     → Implementor (each repo) → Evaluator (each repo + cross-repo) ── PASS ──→ PRs per repo → Human Review → Human Merge
-                                 └─ FAIL/INSUFFICIENT_EVIDENCE → bounded iteration (light 2, full 3) → escalate to human
+Jira → Planner → you confirm repos + track → Implementor → Evaluator ── PASS ──→ PRs → you review and merge
+                                                  └── FAIL → fix and re-evaluate (light: 2 rounds, full: 3) → escalate to you
 ```
 
-## Workspace
+Claude never merges, approves, force-pushes, pushes to protected branches or writes to Jira. Those stay with you.
 
-The harness runs in a **workspace**: one parent folder holding clones of all product repos and the shared brain repo, with Claude started in that folder. The harness itself is **not** in the workspace: it is installed once as a Claude Code plugin (Setup, step 3) and then loads in every session. The workspace folder itself is **never** a git repo — it is a plain container, and you can name it anything. A ticket may change several repos; the Planner works out which ones, the human confirms, and each changed repo gets the same ticket branch name and its own PRs.
+---
+
+## 1. Set up (once per developer)
+
+**Prerequisites:** Claude Code installed and logged in; `git`; **Node.js on PATH** (the safety hooks need it and do nothing silently without it); each repo's build tools (JDK + Maven/Gradle, Node/npm), because the harness runs real tests; a Jira account on the team's Atlassian site.
+
+### 1.1 Create the workspace
+
+The workspace is one plain folder (not a git repo) holding every product repo and the brain. Start Claude from there.
 
 ```text
-C:\sis-repos\                            workspace folder (any name, any path)
-├── .ignore                              keeps the brain out of code searches
-├── sis-brain\                           the shared brain repo (a clone)
+C:\sis-repos\                      any name, any path
+├── .ignore                        written by the harness, keeps sis-brain out of code searches
+├── sis-brain\                     the shared brain repo
 ├── sis-product-sis-admin-backend\
 ├── sis-product-sis-frontend\
-└── …the other services…
+└── …every other product repo…
 ```
 
-- **Clone all product repos**, so the harness can follow a flow from the UI through every service.
-- **Don't copy or clone the harness into the workspace** to use it; install it (Setup, step 3). Only harness maintainers keep a clone of `claude-harness-lite`, anywhere they like. If it sits inside the workspace it is skipped as a product repo because it contains `.claude-plugin/`.
-- Repos should have **no uncommitted work you care about**. The harness never touches uncommitted changes; it stops and asks if a repo it needs to change is dirty.
-- **Clone the brain repo** into the workspace (see Setup). The harness also writes a workspace `.ignore` listing `sis-brain/`, which keeps harness records out of cross-repo code searches while leaving the record itself searchable.
-- Nothing needs gitignoring in the workspace: it is not a git repo, so there is no `.gitignore` to get wrong.
+Clone **all** product repos so the harness can follow a flow from the UI through every service. Commit or stash any work you care about first; the harness stops if a repo it has to change is dirty.
 
-`skills/harness-core/SKILL.md` → Workspace defines the model: repo discovery, `git -C` and which repos a ticket changes; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
-
-## Setup
-
-**One-time, per developer** — steps 1–3 below, then never again:
-
-| Step | What | Command |
-|---|---|---|
-| 1 | Connect Jira | `claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com/v2/mcp`, then `/mcp` login |
-| 2 | Clone the brain | `git clone https://github.com/pbsgears/sis-brain.git` inside the workspace |
-| 3 | Install the harness | `claude plugin marketplace add hasbee-osos/claude-harness-lite` then `claude plugin install engineering-harness@sis-harness` |
-
-**Every session:** `cd` into the workspace and run `claude`. No flags.
-
-**When the harness changes** (a PR is merged): `claude plugin marketplace update sis-harness` then `claude plugin update engineering-harness@sis-harness`. This only picks up a change if the merged PR raised `version` in `.claude-plugin/plugin.json`; otherwise the update reports "already at the latest version". Every PR that changes the harness raises it.
-
-**Prerequisites:** Claude Code installed and logged in; `git` and **Node.js on PATH** (the safety hooks run on Node, and without it they silently do nothing); each repo's own build tools (JDK + Maven/Gradle, Node/npm), because the harness runs real tests; a Jira account on the team's Atlassian site.
-
-**1. Connect Jira** (once, from any directory — `--scope user` applies everywhere):
+### 1.2 Connect Jira (MCP)
 
 ```powershell
 claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com/v2/mcp
 ```
 
-Start `claude`, run `/mcp`, select `atlassian`, and complete the browser login, choosing the right site. If the connection is refused, an Atlassian admin must allow the Rovo MCP Server. Details and other servers: `mcp/jira/README.md`. The plugin bundles no MCP server and no credentials.
+Start `claude`, run `/mcp`, choose `atlassian` and complete the browser login on the right site. If it is refused, an Atlassian admin must allow the Rovo MCP Server. More detail: [`mcp/jira/README.md`](mcp/jira/README.md).
 
-> **Jira is read-only in harness sessions.** The `jira-guard` hook blocks every Atlassian tool except a small list of read tools. It only works while the plugin is loaded, so don't use the Atlassian tools in sessions where the harness plugin is not installed or is disabled. As a second safety net, decline any prompt to create, edit, comment on or transition an issue, and never choose "always allow" for atlassian tools.
+Jira is **read-only** in harness sessions: the `jira-guard` hook blocks everything except reads. Never choose "always allow" for Atlassian tools.
 
-**2. Clone the brain** (once per developer). A human creates an **empty private** GitHub repo for the team's record — e.g. `pbsgears/sis-brain` — then everyone clones it into their workspace:
+### 1.3 Clone the brain
 
 ```powershell
 cd C:\sis-repos
-git clone https://github.com/pbsgears/sis-brain.git
+git clone https://github.com/hasbee-osos/sis-brain.git
 ```
 
-The harness seeds the repo's `.harness-brain` marker, README, `.gitignore` and `.gitattributes` on first use and commits them, and writes the workspace `.ignore` so the records stay out of code searches. It commits and pushes at every milestone from then on.
-
-**3. Install the harness** (one-time, per developer; user level, so it loads in every session and every folder):
+### 1.4 Install the plugin
 
 ```powershell
 claude plugin marketplace add hasbee-osos/claude-harness-lite
 claude plugin install engineering-harness@sis-harness
 ```
 
-A *marketplace* is just a list of installable plugins; this repo is its own one-plugin marketplace (`.claude-plugin/marketplace.json`, named `sis-harness`), so there is nothing else to set up. The first command registers it (one-time), the second installs the harness from it (one-time). The install is a copy of what is merged to `main`, never an unmerged branch. Check it with `claude plugin list`.
+Check it with `claude plugin list`. Do not clone or copy the harness into the workspace to use it.
 
-**Getting harness updates** after changes are merged:
+### 1.5 Smoke-test the guards (before your first ticket)
+
+- **Git guard:** ask Claude to run `git -C <repo-on-a-protected-branch> commit --allow-empty -m guard-test`. It must be blocked by `git-guard`. If it goes through, Node is missing or the plugin didn't load. Undo it with `git -C <repo> reset --soft HEAD~1`.
+- **Jira guard:** ask Claude to comment on a ticket. It must be blocked by `jira-guard`. Reading the ticket and its attachments must still work.
+
+Screen recordings need no setup. The first time one comes up, the harness installs its own ffmpeg under `~/.claude-harness/tools/`.
+
+### Updating the harness
+
+When a harness PR is merged:
 
 ```powershell
 claude plugin marketplace update sis-harness
 claude plugin update engineering-harness@sis-harness
 ```
 
-**4. Start Claude in the workspace**, with no extra flags:
+Then run `/reload-plugins` or restart Claude. An update only arrives if the PR raised `version` in `.claude-plugin/plugin.json`.
+
+---
+
+## 2. Everyday use
 
 ```powershell
 cd C:\sis-repos
 claude
 ```
 
-Don't also pass `--plugin-dir` for an installed harness; two copies of the same plugin in one session can run each hook twice and leave it unclear which version is active. `--plugin-dir <path to your claude-harness-lite clone>` is only for harness maintainers testing unmerged changes. Disable the installed copy first with `claude plugin disable engineering-harness@sis-harness`, and enable it again afterwards.
+Use no extra flags, and keep the default permission mode so you approve each command. If `/work` isn't recognised, use `/engineering-harness:work`.
 
-Keep the default permission mode, so each command is approved. If `/work` is not recognized, use `/engineering-harness:work`; the same applies to the other commands.
+### Commands
 
-**5. Smoke-test both guards** before the first real ticket:
-
-- **Git guard:** pick a repo sitting on a protected branch (e.g. `base-sandbox-qa`) and ask Claude to run `git -C <that-repo-folder> commit --allow-empty -m guard-test`. It must be **blocked by engineering-harness git-guard**. If the commit goes through, stop and check that Node is on PATH and the plugin loaded. Undo a test commit with `git -C <repo> reset --soft HEAD~1`.
-- **Jira guard:** ask Claude to add a comment to a ticket. It must be **blocked by engineering-harness jira-guard**. Then ask it to read the ticket and its attachments; that must work. If a read is blocked, report it to the harness maintainers (the allowlists live in `hooks/scripts/jira-guard.js`).
-
-**Attachments need no setup.** On the first ticket with a screen recording the harness installs a pinned ffmpeg for itself under `~/.claude-harness/tools/` (about 80 MB, once per machine, via npm) unless `ffmpeg` is already on PATH. Downloads and frames stay in the OS temp folder, never in the brain or a repo — see `skills/jira-attachments/SKILL.md`.
-
-## Commands
-
-| Command | Purpose |
+| Command | What it does |
 |---|---|
-| `/work <ticket-id-or-url>` | Moves the ticket forward from wherever it stands: plan → implement ⇄ evaluate → PRs for the next stage → Jira summary where supported. Re-run it to continue after any stop. `/work <ticket> plan` stops once the plan is written |
-| `/brain [ticket]` | Read the record: `/brain` lists recent tickets, `/brain <ticket>` shows its timeline, locked decisions, iteration history and metrics. Read-only. `/brain publish` rebuilds and republishes the leadership dashboard on claude.ai; `/work` also republishes it whenever a run stops |
+| `/work <ticket-id-or-url>` | Moves the ticket forward from wherever it stands: plan → implement ⇄ evaluate → PRs. Re-run it to continue after any stop, even days later or on another machine |
+| `/work <ticket> plan` | Stops once the plan is written. Use it as a cheap check of the root cause or scope and the repos before a full run |
+| `/work` | No ticket given: continues the ticket you were last working on |
+| `/brain` | Lists recent tickets from the brain. Read-only |
+| `/brain <ticket>` | Shows a ticket's status, timeline, locked decisions, iterations, cost and PRs. Read-only |
+| `/brain publish` | Rebuilds and republishes the leadership dashboard. `/work` also does this whenever a run stops |
 
-There are only two because the brain already knows where every ticket stands: `/work` reads `state.json` and does the next thing, so there is no need for a command per stage.
-
-### How `/work` runs
+### What `/work` does, and where it waits for you
 
 ```
-/work GSIS-12345
-  1. Read the ticket from Jira
-  2. Propose work type, flow + branch name                      ⏸ human confirms
-  3. Fetch all repos; the Planner traces the flow, finds the root cause or scope, and plans the change
-  4. Show repos to change (vs context only) + proposed track    ⏸ human confirms
-  5. Create the ticket branch in each changed repo
-  6. Implementor → Evaluator  (FAIL → implement + evaluate again; light max 2 rounds, full max 3)
-  7. PR stage 1: push each branch, give a compare link per repo ⏸ human opens the PRs, pastes the URLs back
-  8. Publish a summary to Jira (blocked while Jira is read-only; the record stays in sis-brain/)
+1. Reads the ticket from Jira (attachments and recordings included)
+2. Proposes the work type, flow and branch name          ⏸ you confirm
+3. The Planner traces the code across all repos and writes the plan
+4. Shows the repos to change and the proposed track      ⏸ you confirm (no branch exists before this)
+5. Creates the same ticket branch in each changed repo
+6. Implementor → Evaluator, repeated on blocking findings only
+7. PASS: pushes the branches and gives one compare link per repo   ⏸ you open the PRs and paste the URLs back
+8. After base-qa verification, a later /work raises the customer-sandbox PRs (PR stage 2)
 ```
 
-It stops and waits for the human when:
-- The work type, flow and branch name need confirmation — check both, e.g. `base/bugfix/GSIS-12345-short-desc` cut from `base-development`.
-- The repos to change and the track need confirmation. No branch is created before that.
-- A repo to change has uncommitted changes, or Jira can't be read.
-- The Planner returns `NEEDS_INPUT` (root cause not established, draft acceptance criteria, unclear business rules, or a story too big for one run). The harness writes a paste-ready Jira comment with the questions to the ticket's brain folder: `qa-packet.md` for a Bug, `sme-packet.md` for a Story/Task/Feature. Post it on the ticket. When it has been answered, run `/work <ticket>` again; the harness reads the answers from the Jira comments and asks you to confirm them before continuing.
-- A light ticket turns out bigger than planned. You decide whether it moves to the full track.
-- The evaluation rounds run out. An escalation report is written; on a light ticket it proposes the full track.
-- A step needs permission, e.g. running tests, committing or pushing in the default permission mode.
+It also stops when:
 
-On PASS it pushes each branch and gives one compare link per repo, with the PR descriptions written to the ticket's brain folder as `pr-<repo>-<target>.md`. The human opens the PRs and pastes the URLs back.
+- **The Planner needs answers** (`NEEDS_INPUT`). It writes a short, paste-ready Jira comment to the ticket's brain folder: `qa-packet.md` for a bug, `sme-packet.md` for a story. Post it on the ticket. Once it's answered, run `/work <ticket>` again; the harness reads the answers from Jira and asks you to confirm them.
+- **A light ticket turns out bigger than planned.** You decide whether it moves to the full track.
+- **The evaluation rounds run out.** It writes an `escalation-report.md` and hands the ticket back to you.
+- **A repo is dirty, or Jira can't be read.**
 
-Re-running `/work <ticket>` resumes from the brain — after an interruption, days later, in a new session or on another machine: it prints what is done, which decisions are locked, what the human already confirmed and what happens next, then continues from there. It never re-asks a confirmation already recorded, and never redoes a stage whose artifact exists. In particular:
-- **PR stage 2.** Once the ticket is deployed and checked on `base-qa` in every changed repo, `/work <ticket>` asks you to confirm that and raises the customer sandbox PRs. It stops after each stage because days can pass between them.
-- **After a manual fix.** If a ticket branch has commits the Evaluator hasn't seen, `/work` re-evaluates before raising any PR.
+If you fix something by hand on the ticket branch, `/work` re-evaluates before it raises any PR.
 
-Claude never merges, approves, force-pushes, pushes to protected branches, raises `base-development` PRs, or does hotfixes. Those stay with the human.
+---
 
-## Tracks
+## 3. Light and full tracks
 
-| | **light** | **full** |
+The Planner proposes a track and you confirm it together with the repos. The Evaluator runs on both.
+
+| | **Light** | **Full** |
 |---|---|---|
-| For | a bug with an established root cause, or a feature with at most 3 confirmed acceptance criteria; at most 2 repos, with at most an additive contract change; no new entity, workflow or notification event; nothing touching auth, deletion checks or existing rows | everything else |
-| Plan | understanding in full; the change, tests and AC coverage in a few lines | every section in full, including cross-repo contracts and the complete regression surface |
-| Evaluation rounds | max 2 | max 3 |
+| Fits | A bug with a proven root cause, or a story with at most 3 confirmed acceptance criteria. At most 2 repos, at most an additive contract change. No new entity, workflow or notification event. Nothing that touches auth, deletion checks or existing rows | Everything else |
+| Plan | Full understanding; the change, tests and AC coverage in a few lines | Every section in full, including cross-repo contracts and the regression surface |
+| Evaluation rounds | Max 2 | Max 3 |
 
-The Planner proposes the track and you confirm it with the repos. The Evaluator runs on both. `skills/harness-core/SKILL.md` → Tracks has the exact criteria.
+The exact criteria are in [`skills/harness-core/SKILL.md`](skills/harness-core/SKILL.md) → Tracks.
 
-## Agents
+**Agents:** the **Planner** works out the root cause or scope, the repos and the plan; it is read-only. The **Implementor** makes the change, adds a regression test for a bug or a test per acceptance criterion for a story, and records the real test output. The **Evaluator** is an independent, read-only quality gate that returns `PASS`, `FAIL` or `INSUFFICIENT_EVIDENCE`.
 
-- **Planner** — understands the ticket against the actual code across the workspace and plans the change in one pass: marks each repo as change or context; for a bug, the root cause and the smallest fix; for a story, the gap, scope, numbered acceptance criteria and the change that meets each — plus the cross-repo contracts, the **regression surface** and a **risk-based test strategy**, at the depth the track needs. Flags a story too big for one run. Read-only.
-- **Implementor** — implements the plan in the confirmed repos only, applies **characterization testing** in low-coverage areas, adds the regression test (bug) or a test per acceptance criterion (story), runs risk-proportionate verification in each repo, records **actual evidence** (commands + real results).
-- **Evaluator** — independent quality gate over the whole work product, per repo and cross-repo, on both tracks; read-only; issues exactly one verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`); only blocking findings trigger another iteration.
+**Team conventions** are applied on every ticket, and the Evaluator treats an unjustified breach as blocking. They live in [`skills/engineering-standards/`](skills/engineering-standards/SKILL.md) (backend, frontend, database). To change a rule, see [`docs/maintaining-guidelines.md`](docs/maintaining-guidelines.md).
 
-Understanding and planning are one agent because splitting them made the second agent re-read the same code from an empty context. The Evaluator stays separate because its value is checking work it did not write.
+---
 
-## Evaluator loop
+## 4. The brain
 
-At most 2 rounds on the light track and 3 on the full track. Only evaluator **blocking findings** start a new Implementor→Evaluate cycle; recommendations do not. `INSUFFICIENT_EVIDENCE` first attempts to obtain the missing evidence. When the rounds run out the harness stops and writes an escalation report for the human.
+Every `/work` run is recorded in **`sis-brain`**, a separate git repo that the whole team shares. The harness pulls it when a ticket starts or resumes, writes as it works, and commits and pushes to `main` at every milestone, so anyone can pick up any ticket where it stopped.
 
-## Team guidelines the agents follow
+Each ticket gets one folder, `tickets/<TICKET-ID>/`, which holds:
 
-The team's development guidelines are Markdown in this repo and are read on **every ticket**, for each stack it touches: database and Liquibase rules, base entity/service/DTO classes, authorization, deletion and usage checks, common frontend components, error handling, dates, logging. The Planner names the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a **blocking** finding even when the code works.
+- `state.json`: where the ticket stands, with `next_action` in plain words.
+- `journal.jsonl`: the append-only timeline.
+- `decisions.md`: the numbered, locked decisions with their evidence.
+- The plan, implementation reports, evaluations, PR descriptions and any QA/SME packet.
+- `metrics.json`: tokens, time and cost.
 
-- `skills/engineering-standards/SKILL.md` — rules for every stack (dates, code hygiene), change principles and the testing standard
-- `skills/engineering-standards/references/backend.md`, `frontend.md`, `database.md` — the team's own conventions per stack (screenshots in `images/`); an agent reads the ones for the stacks a change touches
-- `skills/engineering-standards/references/java-code-review.md` — general Java review criteria; project rules win where they differ
-- `docs/maintaining-guidelines.md` — how to correct or extend a rule
+The same files feed a leadership dashboard on claude.ai.
 
-## The brain — the record of every run
+You never edit the brain by hand. Read it with `/brain`, and for a reopened ticket start with its `decisions.md`.
 
-The brain is a **separate git repo, shared by the team**, cloned into each workspace as `sis-brain`. Every session pulls it, records as it works, and pushes at each milestone, so it is current for everyone and grows with every ticket the team runs.
+**For details, read the brain's own [`README.md`](https://github.com/hasbee-osos/sis-brain#readme).** The full specification of how the brain is written is [`skills/brain/SKILL.md`](skills/brain/SKILL.md).
 
-One folder per ticket, `tickets/<TICKET-ID>/`, holds its state, journal, locked decisions, every iteration's artifacts and its metrics. Epic, sprint and assignee are recorded as data, not folders, so a ticket that changes sprint never moves. A leadership dashboard built from the same files is published to claude.ai: `/work` republishes it whenever a run stops (only the page owner's runs can), and `/brain publish` refreshes it on demand.
+---
 
-**`skills/brain/SKILL.md` is the single specification of how the brain is written** — layout, what each stage records, fields, events, syncing and the dashboard. To review or improve how the harness records its work, read and edit that one file.
+## 5. Good to know
 
-Four properties make it worth keeping:
-
-- **Resumable.** `next_action` is written in plain words on every transition, so any session can pick a ticket up — `/work <ticket>` to continue, `/brain <ticket>` to just look.
-- **Traceable.** Decisions are numbered, justified, evidence-backed and **locked**. A later stage that contradicts one without superseding it is a blocking evaluator finding. When a ticket is reopened or extended months later, `decisions.md` says why the change was built this way and which alternatives were rejected.
-- **Complete.** Iteration artifacts are numbered, never overwritten, so what the evaluator caught in round 1 survives round 2.
-- **Shared.** Per-ticket folders mean two developers' sessions never touch the same file, so everyone pushes to `main` directly — no PRs, no review gate, no conflicts in practice.
-
-What never goes in: chain-of-thought, secrets, bulk file dumps, or Jira content beyond what the work needs — the record is pushed to GitHub and read by the whole team. The brain sits at the workspace root, never inside a product repo. `skills/brain/SKILL.md` is the full specification.
-
-At the end of a run, concise final artifacts are also published to the Jira ticket **only if** the configured Jira MCP supports writes; otherwise the limitation is documented and the record stays in the brain. Jira remains the system of record for the work item; the product repos hold only the product change.
-
-## Telemetry
-
-A third hook, `telemetry.js`, runs when a subagent or a session ends. It reads the session transcript incrementally and records, per ticket and per stage, how many tokens each model used, how long each stage took, how many iterations ran, what the evaluator found and which repos were touched. It writes:
-
-- `sis-brain/metrics/runs.jsonl` — one record per collection window, with the ticket and stage
-- `sis-brain/metrics/harness.prom` — Prometheus textfile exposition, recomputed from the brain so the counters stay monotonic
-- each ticket's `metrics.json` — the per-ticket rollup `/brain` and the dashboard report
-
-Point node_exporter at `sis-brain/metrics` with `--collector.textfile.directory` and Grafana can chart first-pass rate, iterations per ticket, tokens per ticket and where the wall-clock goes. The metrics carry **no content** — counts, durations and bounded labels only, never a ticket ID, a prompt, a path or code. Claude Code's own OpenTelemetry export covers the complementary question of overall usage cost.
-
-`docs/telemetry.md` has the metric reference, the cardinality rule, the scrape setup, the OTel variables and the panels worth building first. The collector has a self-test: `node hooks/scripts/telemetry.selftest.js`.
-
-## Git safety
-
-The `git-guard` PreToolUse hook blocks destructive operations (force-push, `reset --hard`, `clean -f`, …), git commit/push/merge on protected branches, and pushes whose destination is a protected branch (`HEAD:gcet-qa`, `--all`), for both the Bash and PowerShell tools. It checks the branch of the repo each git command actually targets (`git -C`, `cd`/`Set-Location`), so it works from the workspace folder, and denies git write commands whose repo it cannot determine. The harness's own record repo is the one exception: a repo whose root holds a `.harness-brain` marker may be committed and pushed to on any branch, because writing the record is the point. Force-push and history rewriting stay blocked there too, and the marker — not the folder name — is what grants it, so no product repo can inherit it. It also restricts the GitHub CLI to reads plus `gh pr create` — merging, approving, commenting, editing PRs, triggering workflows, and write `gh api` calls are denied, because `gh` runs with the human's full GitHub permissions. Both guards have self-tests (`node hooks/scripts/git-guard.selftest.js`). The branching strategy — flows, branch naming, PR targets, and the protected-branch list the hook reads — is defined only in `skills/git-workflow/SKILL.md` (source PDF and repository analysis under `references/`). To change the strategy, edit that file. The harness never merges, never approves its own PR, never bypasses checks.
-
-A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers it allows only the read tools in its allowlist, lets the generic `executeRead` through only for the named read operations the harness needs (comments, attachment downloads), and denies everything else (see `mcp/jira/README.md`; self-test `node hooks/scripts/jira-guard.selftest.js`).
-
-## Architecture
-
-Three agents with separated responsibilities; `/work` orchestrates them; skills provide reusable knowledge, grouped by when it is needed — each agent preloads only the skills it uses through `skills:` in its frontmatter, and reads a stack's conventions only when the change touches that stack; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
-
-```
-.claude-plugin/plugin.json     plugin manifest
-agents/                        planner, implementor, evaluator
-commands/                      /work /brain
-skills/                        harness-core (ground rules, workspace, bug vs feature per stage;
-                                 read by every command, preloaded by every agent),
-                               engineering-standards (team conventions per stack under
-                                 references/, change principles, testing),
-                               brain (the record; orchestrating commands only),
-                               git-workflow (flows, branches, PRs, protected branches),
-                               jira-attachments (download attachments, frames from recordings),
-                               input-packets (QA / SME questions as a paste-ready Jira comment)
-hooks/                         PreToolUse git-guard (protected branches, destructive ops, gh allowlist)
-                               and jira-guard (read-only Atlassian MCP tools);
-                               telemetry.js collects token and duration metrics
-mcp/jira/README.md             read-only Jira MCP integration point
-templates/                     plan, implementation-report, evaluation, qa-packet, sme-packet,
-                               escalation-report, decision-record, brain-readme
-docs/maintaining-guidelines.md how the team edits the guidelines the agents follow
-docs/telemetry.md              metrics, Prometheus scraping and Grafana panels
-CLAUDE.md                      pointer for plugin developers (not loaded by plugin users)
-<workspace>/sis-brain/            the shared record repo: per-ticket state, journal, decisions, artifacts
-```
-
-Model allocation: Planner and Evaluator run on the strongest available reasoning model; Implementor runs on a faster/cheaper model. Independence of the Evaluator from the Implementor is the important invariant.
-
-## Piloting the harness
-
-Judging whether the harness is worth investing in takes a handful of real tickets.
-
-**Pick:** small, reproducible Bugs (or small Stories) with clear acceptance criteria, on the `base`, `gcet` or `gutech` line. Include at least one that touches a service **and** the UI.
-**Avoid:** hotfixes, OSOS, otc/cbfs, and anything urgent.
-
-The brain is the pilot's evidence: each ticket's folder keeps the decisions, the iteration history and the metrics of every run, and `/brain <ticket>` summarises them. Keep the folder, and record:
-
-| Question | Answer |
-|---|---|
-| Ticket / type | |
-| Correct flow and branch proposed? | |
-| Correct repos identified (none missing, none extra)? | |
-| Root cause right (bug) / scope and acceptance criteria right (story)? | |
-| Plan sensible and minimal? Right track proposed? | |
-| Code quality — would you have merged it as-is? | |
-| Tests meaningful and actually run in each repo? | |
-| Every acceptance criterion actually proven (story)? | |
-| Evaluator verdict right? Any false PASS/FAIL? | |
-| Iterations used / escalated? | |
-| Times you had to step in, and why | |
-| Time taken vs. doing it manually | |
-| Anything unsafe it tried (blocked or not) | |
-| Worth it? (1–5) + one-line reason | |
-
-Multi-repo support is new and untested on real tickets; the repo selection and the cross-repo checks are exactly what a pilot should judge. If Claude's branching proposal disagrees with how the team works, or a guideline is wrong or missing, note it — those are findings about the harness, not just about the ticket.
-
-## Limitations (by design)
-
-- Read-only Jira: the end-of-run summary is not posted; the record stays in the brain. Publishing requires an MCP with write support and a guard change; nothing is faked.
-- Screen recordings are read as still frames (up to 40 per video, taken at on-screen changes): no audio, and something shown for under a second can be missed.
-- Automatic PR creation requires an authenticated `gh`; otherwise the human opens each PR from a prefilled compare link.
-- No orchestration server, no database, no UI — the loop runs inside Claude Code.
-- PASS means "sufficient evidence for human review", not "guaranteed safe".
-
-## Extending
-
-- Add a skill under `skills/<name>/SKILL.md` only for knowledge that is loaded at a different time from the existing ones; project conventions go into `engineering-standards` (a new stack gets a new file under its `references/`). Knowledge only one agent uses belongs in that agent's prompt.
-- The team's development guidelines live as Markdown under `skills/*/references/` and are read on every ticket — see `docs/maintaining-guidelines.md` before changing a rule.
-- Add MCP integrations per `mcp/jira/README.md` (Jira write, Git provider, CI/CD).
-- Adjust protected branches in `skills/git-workflow/SKILL.md`; destructive patterns in `hooks/scripts/git-guard.js`.
-- Tune agent models/effort in `agents/*.md` frontmatter.
+- **Safety hooks:**
+  - `git-guard` blocks destructive git, commits and pushes on protected branches, and `gh` writes other than `gh pr create`. The branching strategy is in [`skills/git-workflow/SKILL.md`](skills/git-workflow/SKILL.md).
+  - `jira-guard` keeps Jira read-only.
+  - `telemetry.js` records tokens and durations per ticket and stage ([`docs/telemetry.md`](docs/telemetry.md)).
+- **Limitations:**
+  - No summary is posted to Jira, because Jira is read-only.
+  - Recordings are read as still frames, with no audio.
+  - Without an authenticated `gh`, you open each PR from its compare link.
+  - PASS means "ready for human review", not "guaranteed safe".
+- **Maintainers testing unmerged changes:** disable the installed copy (`claude plugin disable engineering-harness@sis-harness`), then run `claude --plugin-dir <your clone>`. Every harness PR must raise `version` in `.claude-plugin/plugin.json`.
+- **Layout:** `agents/` holds the Planner, Implementor and Evaluator, `commands/` holds `/work` and `/brain`, and `skills/` holds the ground rules, standards, brain spec, git workflow, attachments and input packets. `hooks/` holds the guards and telemetry, and `templates/` holds the artifact templates.
