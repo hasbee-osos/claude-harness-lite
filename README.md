@@ -1,6 +1,6 @@
 # Claude Code Engineering Harness
 
-A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a design and a test per criterion (`skills/work-types/SKILL.md`).
+A minimalist, reusable **Claude Code plugin** that delivers **Jira bugs and features** on an existing Spring Boot + Angular + PostgreSQL product. Work starts from a Jira ticket and ends at PRs, one per changed repo, that a **human** reviews and merges. One pipeline serves both work types; each stage adapts: a bug gets a root cause, a minimal fix and a regression test; a story gets a gap analysis, confirmed acceptance criteria, a design and a test per criterion (`skills/harness-core/SKILL.md` → Work types).
 
 ```
 /work ABC-123
@@ -29,7 +29,7 @@ C:\sis-repos\                            workspace folder (any name, any path)
 - **Clone the brain repo** into the workspace (see Setup). The harness also writes a workspace `.ignore` listing `sis-brain/`, which keeps harness records out of cross-repo code searches while leaving the record itself searchable.
 - Nothing needs gitignoring in the workspace: it is not a git repo, so there is no `.gitignore` to get wrong.
 
-`skills/workspace/SKILL.md` defines the model: repo discovery, `git -C` and where the brain lives; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
+`skills/harness-core/SKILL.md` → Workspace defines the model: repo discovery, `git -C` and which repos a ticket changes; `skills/brain/SKILL.md` defines the record itself. Opening Claude inside a single repo also works (single-repo mode).
 
 ## Setup
 
@@ -159,10 +159,11 @@ Claude never merges, approves, force-pushes, pushes to protected branches, raise
 
 ## Team guidelines the agents follow
 
-The team's development guidelines are Markdown in this repo and are read on **every ticket**: database and Liquibase rules, base entity/service/DTO classes, authorization, deletion and usage checks, common frontend components, error handling, dates, logging. The Designer names the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a **blocking** finding even when the code works.
+The team's development guidelines are Markdown in this repo and are read on **every ticket**, for each stack it touches: database and Liquibase rules, base entity/service/DTO classes, authorization, deletion and usage checks, common frontend components, error handling, dates, logging. The Designer names the conventions that apply, the Implementor follows them, and the Evaluator treats an unjustified breach as a **blocking** finding even when the code works.
 
-- `skills/engineering-standards/references/sis-development-guidelines.md` — the team's own conventions (screenshots in `images/`)
-- `skills/springboot/references/java-code-review-guidelines.md` — general Java review criteria; project rules win where they differ
+- `skills/engineering-standards/SKILL.md` — rules for every stack (dates, code hygiene), change principles and the testing standard
+- `skills/engineering-standards/references/backend.md`, `frontend.md`, `database.md` — the team's own conventions per stack (screenshots in `images/`); an agent reads the ones for the stacks a change touches
+- `skills/engineering-standards/references/java-code-review.md` — general Java review criteria; project rules win where they differ
 - `docs/maintaining-guidelines.md` — how to correct or extend a rule
 
 ## The brain — the record of every run
@@ -204,19 +205,20 @@ A second hook, `jira-guard`, keeps Jira read-only. On Atlassian/Jira MCP servers
 
 ## Architecture
 
-Four agents with strictly separated responsibilities; commands orchestrate them; skills provide reusable knowledge; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
+Four agents with strictly separated responsibilities; commands orchestrate them; skills provide reusable knowledge, grouped by when it is needed — each agent preloads only the skills it uses through `skills:` in its frontmatter, and reads a stack's conventions only when the change touches that stack; hooks enforce Git and Jira safety and collect telemetry; every run is recorded in the workspace brain.
 
 ```
 .claude-plugin/plugin.json     plugin manifest
 agents/                        analyzer, designer, implementor, evaluator
 commands/                      /work /analyze /design /implement /evaluate /pr /brain
-skills/                        architecture, springboot, angular, postgresql, testing,
-                               engineering-standards, repository-analysis,
-                               characterization-testing, git-workflow, workspace, brain,
-                               work-types (what each stage does for a bug vs a feature),
+skills/                        harness-core (ground rules, workspace, bug vs feature per stage;
+                                 read by every command, preloaded by every agent),
+                               engineering-standards (team conventions per stack under
+                                 references/, change principles, testing),
+                               brain (the record; orchestrating commands only),
+                               git-workflow (flows, branches, PRs, protected branches),
                                jira-attachments (download attachments, frames from recordings),
-                               input-packets (QA / SME questions as a paste-ready Jira comment),
-                               ground-rules (the harness rules every command/agent reads first)
+                               input-packets (QA / SME questions as a paste-ready Jira comment)
 hooks/                         PreToolUse git-guard (protected branches, destructive ops, gh allowlist)
                                and jira-guard (read-only Atlassian MCP tools);
                                telemetry.js collects token and duration metrics
@@ -269,7 +271,7 @@ Multi-repo support is new and untested on real tickets; the repo selection and t
 
 ## Extending
 
-- Add project skills under `skills/<name>/SKILL.md`.
+- Add a skill under `skills/<name>/SKILL.md` only for knowledge that is loaded at a different time from the existing ones; project conventions go into `engineering-standards` (a new stack gets a new file under its `references/`). Knowledge only one agent uses belongs in that agent's prompt.
 - The team's development guidelines live as Markdown under `skills/*/references/` and are read on every ticket — see `docs/maintaining-guidelines.md` before changing a rule.
 - Add MCP integrations per `mcp/jira/README.md` (Jira write, Git provider, CI/CD).
 - Adjust protected branches in `skills/git-workflow/SKILL.md`; destructive patterns in `hooks/scripts/git-guard.js`.

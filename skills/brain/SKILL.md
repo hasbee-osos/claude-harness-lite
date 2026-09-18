@@ -1,6 +1,6 @@
 ---
 name: brain
-description: The single specification of how the brain is written - the team's shared git repo, cloned into the workspace as sis-brain, holding the durable per-ticket record of every harness run. Covers the layout, what each stage records, state.json, the journal, locked decisions, the index, syncing, resuming a ticket, metrics, the leadership dashboard, and what must never be written there. Read before any harness command or agent acts.
+description: The single specification of how the brain is written - the team's shared git repo, cloned into the workspace as sis-brain, holding the durable per-ticket record of every harness run. Covers the layout, what each stage records, state.json, the journal, locked decisions, the index, syncing, resuming a ticket, metrics, the leadership dashboard, and what must never be written there. Read by the orchestrating commands before they write or read the record; agents return their artifacts and do not write here.
 ---
 
 # The Brain
@@ -217,14 +217,14 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 - **Decided by:** designer · confirmed by human 2026-09-16T10:31Z
 - **Options considered:** patch the view; filter in the service; add a DB constraint
 - **Why:** the view is shared by three reports; filtering there changes two unrelated screens
-- **Convention cited:** `sis-development-guidelines.md` → business rules live in the service, not in SQL views
+- **Convention cited:** `engineering-standards` → business rules live in the service, not in SQL views
 - **Evidence:** `sis-product-sis-admin-backend/src/main/java/.../ApplicantService.java:212`
 - **Status:** LOCKED
 ```
 
 **What must become a decision record**
 
-- The work type, flow, branch name and source branch (`work-types`, `git-workflow`).
+- The work type, flow, branch name and source branch (`harness-core`, `git-workflow`).
 - The set of repos to change, and why each other repo is context only.
 - **bug:** the root cause, once the Analyzer is confident in it. **feature:** the scope — acceptance criteria in, explicitly out, assumptions — once confirmed; and a slicing decision or a recorded override when a story is too big.
 - The fix or design approach, and the alternatives rejected; for a feature, also each new contract or schema choice worth defending later.

@@ -31,7 +31,7 @@ Decisions live in the ticket folder's `decisions.md` (see the `brain` skill), ap
 - **Decided by:** designer · confirmed by human 2026-09-16T10:44Z
 - **Options considered:** rely on the existing unit tests; add a characterization test over the current CSV output; manual QA only
 - **Why:** the existing tests assert on mocks and would still pass if the export changed shape, so they cannot protect the regression surface named in the analysis
-- **Convention cited:** `characterization-testing` skill → capture current behaviour before changing shared output
+- **Convention cited:** `engineering-standards` → Testing → capture current behaviour before changing shared output
 - **Evidence:** `sis-product-sis-admin-backend/src/test/java/.../ExportServiceTest.java:38` asserts only on the mocked repository call
 - **Status:** LOCKED
 ```

@@ -14,7 +14,7 @@ If this skill and reality disagree, stop and ask the human.
 
 **Inspect the current repository state before acting** (`git -C <repo> status`, `git -C <repo> branch --show-current`, `git -C <repo> fetch`).
 
-Every product repo (all services and the UI) follows this strategy. When a ticket changes several repos (see `workspace`), the flow, branch name, source branch and PR targets are the **same in every changed repo**; branches, resolve branches and PRs are created per repo.
+Every product repo (all services and the UI) follows this strategy. When a ticket changes several repos (see `harness-core` → Workspace), the flow, branch name, source branch and PR targets are the **same in every changed repo**; branches, resolve branches and PRs are created per repo.
 
 ## Branch map
 
@@ -100,7 +100,7 @@ Format: `{line}/{type}/{JIRA-ID}-{short-kebab-description}` — e.g. `base/bugfi
 | GCET specific | `gcet/feature/…` | `gcet/bugfix/…` |
 | GUtech specific | `gutech/feature/…` | `gutech/bugfix/…` |
 
-- **Type** from Jira issue type: Story/Task/Improvement → `feature`, Bug → `bugfix`; a Sub-task follows its parent (see `work-types`). (`hotfix` exists but is human-only.)
+- **Type** from Jira issue type: Story/Task/Improvement → `feature`, Bug → `bugfix`; a Sub-task follows its parent (see `harness-core` → Work types). (`hotfix` exists but is human-only.)
 - **Line** from the confirmed flow: A → `base`, B → the customer line.
 - Keep the Jira key's case; description is short, lowercase, hyphen-separated. No other types (`task`, `bug-fix`, `fix`, …) and no line typos.
 

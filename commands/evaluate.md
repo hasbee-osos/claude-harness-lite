@@ -6,7 +6,7 @@ allowed-tools: Task, Read, Write, Glob, Grep, Bash
 
 # /evaluate — evaluation stage only
 
-Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `ground-rules`, `workspace` and `brain` skills first, and resume from the brain folder if one exists.
+Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says. Read the `harness-core` and `brain` skills first, and resume from the brain folder if one exists.
 
 1. Require the current implementation report in the ticket folder (`state.json` `artifacts.implementation`). If missing, tell the user to run `/implement` first.
 2. Dispatch the `engineering-harness:evaluator` subagent with the ticket, iteration number, `state.json`, `decisions.md`, and paths to all artifacts (analysis, design, implementation report). The evaluator inspects every changed repo, its diff, the evidence, and cross-repo consistency independently.

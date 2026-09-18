@@ -8,7 +8,7 @@ allowed-tools: Read, Write, Glob, Grep, Bash
 
 Input: optional `$ARGUMENTS` (Jira ticket ID). If omitted, pick the ticket as `brain` → "Finding the ticket when none is named" says.
 
-Read the `ground-rules` skill first. Follow `workspace` (repos, `git -C`), `brain` (the record and the resume protocol) and `git-workflow` (PR scope, stages, resolve branches).
+Read the `harness-core` skill first. Follow its Workspace section (repos, `git -C`), `brain` (the record and the resume protocol) and `git-workflow` (PR scope, stages, resolve branches).
 
 1. **Gate:** read the ticket's `state.json` (or the current `evaluation-<n>.md`) and verify the evaluator verdict is `PASS`. If it is `FAIL`, `INSUFFICIENT_EVIDENCE`, or missing, **stop** and tell the user evaluation must pass first. Never skip this gate.
 2. **Check each changed repo** in `state.json` `repos`: the current branch is `branch` (`git -C <repo> branch --show-current`), the working tree is clean (`git -C <repo> status --porcelain`), and the committed change is scoped to the ticket (`git -C <repo> log origin/<source_branch>..HEAD`, `git -C <repo> diff origin/<source_branch>...HEAD`). If `flow`, `pr_targets` or `repos` is missing, stop and ask.
