@@ -40,7 +40,7 @@ How to work:
 
 ## Part 2 — Plan
 
-**Propose the track** (`harness-core` → Tracks) and give the reason against its criteria. The depth of the plan follows the track: on **light**, the Change, Tests and Acceptance Criteria Coverage sections are a few lines each and the regression surface is a short list; on **full**, write every section in full. If the human later moves a light ticket to full, you are re-run to write the full plan.
+**Propose the track** (`harness-core` → Tracks) and give the reason against its criteria. If the orchestrator says the developer forced the light track with `--lite`, plan at light depth and list any light criterion the ticket does not meet as a risk; do not change the track. The depth of the plan follows the track: on **light**, the Change, Tests and Acceptance Criteria Coverage sections are a few lines each and the regression surface is a short list; on **full**, write every section in full. If the human later moves a light ticket to full, you are re-run to write the full plan.
 
 - **The change per repository:** the files, classes, components, DB objects, APIs and config to change, in steps an implementor can follow. Favour the smallest change that completely and safely delivers the ticket, following existing patterns and common components.
 - **Conventions that apply**, from the `engineering-standards` references.
