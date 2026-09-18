@@ -154,7 +154,9 @@ Each ticket gets one folder, `tickets/<TICKET-ID>/`, which holds:
 
 The same files feed a leadership dashboard on claude.ai.
 
-You never edit the brain by hand. Read it with `/brain`, and for a reopened ticket start with its `decisions.md`.
+The brain also holds the **codebase map**, `codebase/`. It has short notes per repo (layout, where things live, build and test commands, pitfalls), plus indexes rebuilt after every fetch that link a screen's menu label to its route, component, API and controller. The Planner and Implementor start from it instead of rediscovering the code each ticket, but they still cite the code itself. When they find the map wrong, the notes are corrected. It is being piloted on the frontend and admin-backend.
+
+You never edit ticket records by hand. Read it with `/brain`, and for a reopened ticket start with its `decisions.md`.
 
 **For details, read the brain's own [`README.md`](https://github.com/hasbee-osos/sis-brain#readme).** The full specification of how the brain is written is [`skills/brain/SKILL.md`](skills/brain/SKILL.md).
 

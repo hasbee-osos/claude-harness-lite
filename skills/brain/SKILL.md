@@ -14,7 +14,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 ```text
 <workspace>/sis-brain/            ← a clone of the team's brain repo
 ├── .harness-brain             ← marker; git-guard allows commits and pushes here
-├── .gitignore                 ← metrics/ , current.json , dashboard/dist/
+├── .gitignore                 ← metrics/ , current.json , dashboard/dist/ , codebase/generated/
 ├── .gitattributes             ← *.jsonl merge=union
 ├── README.md                  ← seeded on first run from templates/brain-readme.md
 ├── index.jsonl                ← one line per ticket milestone (append-only, shared)
@@ -26,6 +26,10 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── build.js, template.html, prices.json   ← committed
 │   ├── artifact.json          ← the published page's URL — committed
 │   └── dist/                  ← generated page — NOT committed
+├── codebase/                  ← the codebase map (see Codebase map)
+│   ├── README.md, build.js, repos.json   ← committed
+│   ├── <repo>.md              ← hand-written notes per repo — committed
+│   └── generated/             ← indexes rebuilt after each fetch — NOT committed
 └── tickets/<TICKET-ID>/       ← "the ticket folder"
     ├── state.json             ← the resume point
     ├── journal.jsonl          ← append-only event log
@@ -67,6 +71,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
 | **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
+| **Codebase notes corrected** (an artifact has Codebase map corrections) | `codebase/<repo>.md` outside the ticket folder (see Codebase map) | — | — | `codebase: <repo> notes - <ID>`, a commit of its own |
 
 ### Input packets
 
@@ -86,7 +91,7 @@ The brain is shared, so every session keeps it current. All of this runs as `git
 - **Rejected push?** `git -C sis-brain pull --rebase`, then push again. **Never force-push and never rewrite history** — git-guard blocks both here as everywhere else.
 - **Conflicts are rare by design.** Each ticket owns its folder, so two people on two tickets never collide. `index.jsonl` is shared but append-only, and `merge=union` resolves it automatically. A genuine conflict means two sessions worked the same ticket: stop and ask the human which record is right.
 - Everyone commits straight to `main`. The brain is a record, not code — there is no review gate, because a gate would stop it being current.
-- `metrics/`, `current.json` and `dashboard/dist/` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
+- `metrics/`, `current.json`, `dashboard/dist/` and `codebase/generated/` are machine-local and gitignored. `tickets/<id>/metrics.json` **is** committed: it is what that ticket cost.
 
 ## What must never be written to the brain
 
@@ -296,6 +301,16 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
 ```
 
 `thinking` is already included in `output`; never add the two.
+
+## Codebase map
+
+`codebase/` saves each ticket from rediscovering the same screens, endpoints and tables. It is a **hint, not evidence**: agents use it to find files quickly, then read and cite the code. `codebase/README.md` in the brain tells agents how to use it.
+
+- **Generated indexes.** `codebase/build.js` reads every repo in `codebase/repos.json` through git, never the checkout, and writes `codebase/generated/`. It reads each repo at `--ref` when given, and otherwise at the repo's `ref` in `repos.json`. A repo without the `--ref` branch falls back to its own ref and says so. The folder is gitignored, and `generated/stamp.json` records the branch and commit each repo was read at. It holds screens (menu label per customer line → route → component → the API services it injects), frontend services → backend controllers, routes, components, endpoints with their grants, tables, menus and outbound clients. It extracts names and paths only, never config values.
+- **Rebuild** at `/work` step 5, after the fetch and at the ticket's source branch: `node sis-brain/codebase/build.js --ref origin/<source_branch>`. A customer-line ticket then sees that line's screens, endpoints and tables, not only base's. If the output reports a fallback, pass that line to the Planner. This is best-effort. If `build.js` is missing, skip it silently. If it fails, say so in one line, carry on, and tell the Planner the map may be stale.
+- **Hand-written notes**, `codebase/<repo>.md`, about one page per repo: layout, where things live, build and test commands, known pitfalls. Only facts checked against the code or a real run.
+- **Corrections.** A plan or implementation report may end with **Codebase map corrections**. The orchestrator applies each correction to the notes, keeping them short, replacing the wrong fact rather than appending, and writing nothing from the ticket beyond the fact itself. It commits the change separately as `codebase: <repo> notes - <TICKET-ID>`. A gap in a generated index can't be fixed in the notes; tell the human it is a `build.js` gap for the brain's maintainers.
+- **Adding a repo** means an entry in `repos.json` (`kind`: `angular` or `spring`), a notes file, and a check of its generated indexes. That is a maintainer's change, not a ticket's.
 
 ## Dashboard
 

@@ -57,6 +57,10 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 
 <unrelated issues discovered (not fixed), or "None.">
 
+## Codebase map corrections
+
+<omit this section unless you verified something the repo's codebase notes get wrong or lack, such as a build or test command, a time it takes, or an environment pitfall. One line each, with the command and the real result.>
+
 ## Status
 
 COMPLETE | BLOCKED

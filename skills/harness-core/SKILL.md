@@ -38,6 +38,7 @@ The workspace is a plain parent folder (never a git repo) holding clones of the 
 - Refer to repos by folder name and cite code as `<repo>/<path>`.
 - **Run git as `git -C <repo> …`**, one command per repo, with a literal path. Never rely on `cd`, and never put a variable or subshell in the path: `git-guard` denies git writes whose repo it cannot determine.
 - **The code of record is `origin/<source_branch>`**, not the current checkout. If a file you rely on differs (`git -C <repo> diff --quiet HEAD origin/<source_branch> -- <path>` fails), read it with `git -C <repo> show origin/<source_branch>:<path>`.
+- **The codebase map** (`sis-brain/codebase/`) gets agents to the right files quickly: hand-written notes per repo (layout, where things live, build and test commands, pitfalls) and generated indexes (screens, routes, endpoints, tables). It is a hint, never evidence. Agents read and cite the code, and report where the map was wrong. `brain` → Codebase map specifies it.
 - **Which repos change:** the Planner traces the flow (UI component → HTTP call → controller → service → repository/SQL, and service-to-service calls), marks each repo **change** or **context** with evidence, and names the cross-repo contracts. The human confirms before any branch is created; every changed repo then gets the same ticket branch name. `state.json` `repos` is that confirmed list.
 
 ## Work types
