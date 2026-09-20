@@ -58,7 +58,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 |---|---|---|---|---|
 | **Ticket started** (no folder yet) | create the folder, `state.json` | `ticket_started` | everything known, including `jira` (see below), `status: PLANNING` | `<ID>: ticket started` |
 | **Session resumed** | — | `session_resumed` | append to `sessions`; refresh `jira` | only with the next milestone |
-| **Work type, flow and branch confirmed** | `decisions.md` (flow decision stating the work type) | `human_confirmed`, `decision_locked` | `work_type`, `flow`, `source_branch`, `branch`, `pr_targets`, `human_confirmations` | `<ID>: flow and branch confirmed` |
+| **Work type, line and branch confirmed** | `decisions.md` (routing decision stating the work type and the Customer Name it came from) | `human_confirmed`, `decision_locked` | `work_type`, `line`, `customer_name`, `source_branch`, `branch`, `pr_target`, `human_confirmations` | `<ID>: line and branch confirmed` |
 | **Plan written** | `plan.md` (revision → `plan-2.md`); `decisions.md` (root cause or scope; and, once Part 2 is written, approach, test strategy, contract or schema choices, deviations); the input packet for NEEDS_INPUT | `stage_start`, `stage_end` (stage `plan`), `decision_locked`, and `input_requested` if blocked | `plan`, `artifacts`, `status` (`AWAITING_REPO_CONFIRMATION` or `NEEDS_INPUT`), `blocked_on` | `<ID>: plan written - READY` / `- NEEDS_INPUT` |
 | **Answers received** for a packet | — | `input_received` | clear `blocked_on`, `status` | with the next milestone |
 | **Repos and track confirmed** | `decisions.md` (repo set; track with its reason) | `human_confirmed` (`repos_to_change`, `track`), `decision_locked` | `repos`, `context_repos`, `track`, `max_iterations` (evaluation rounds: 1 light, 2 full), `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos and track confirmed` |
@@ -68,7 +68,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status`, `repos.<repo>.evaluated_head` (the commit evaluated in each repo) | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
 | **Escalated** (the final fix round could not close a finding, or the harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
-| **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
+| **PRs prepared** | `pr-<repo>-<target>.md` per repo | `pr_prepared` per repo | `prs`, `status: PR_STAGE_1` | `<ID>: PRs prepared` |
 | **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
 | **Codebase notes corrected** (an artifact has Codebase map corrections) | `codebase/<repo>.md` outside the ticket folder (see Codebase map) | — | — | `codebase: <repo> notes - <ID>`, a commit of its own |
@@ -129,7 +129,8 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
   "track": "light | full",
   "workspace": "C:/sis-workspace",
   "work_type": "bug | feature",
-  "flow": "A",
+  "line": "base | gcet | gutech",
+  "customer_name": "Product Core Feature",
   "source_branch": "base-development",
   "branch": "base/bugfix/GSIS-12345-short-desc",
   "repos": {
@@ -137,10 +138,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     "sis-product-sis-frontend":      { "role": "change", "branch_created": true, "evaluated_head": "a41d07b", "final_head": null }
   },
   "context_repos": ["sis-product-sis-student-service"],
-  "pr_targets": [
-    { "stage": 1, "targets": ["base-sandbox-qa"], "status": "OPEN" },
-    { "stage": 2, "targets": ["gcet-sandbox-qa", "gutech-sandbox-qa"], "status": "PENDING" }
-  ],
+  "pr_target": "base-sandbox-qa",
   "prs": [
     {
       "repo": "sis-product-sis-frontend",
@@ -156,7 +154,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     { "session_id": "893ff923-…", "started_at": "2026-09-16T09:10:00Z", "ended_at": null }
   ],
   "human_confirmations": [
-    { "what": "flow_and_branch", "at": "2026-09-16T09:18:00Z", "value": "Flow A, base/bugfix/GSIS-12345-short-desc, source base-development" },
+    { "what": "line_and_branch", "at": "2026-09-16T09:18:00Z", "value": "Customer Name 'Product Core Feature' → line base, base/bugfix/GSIS-12345-short-desc, source base-development, PR to base-sandbox-qa" },
     { "what": "repos_to_change", "at": "2026-09-16T10:31:00Z", "value": ["sis-product-sis-admin-backend", "sis-product-sis-frontend"] }
   ],
   "decisions": ["D-1", "D-2", "D-3"],
@@ -173,8 +171,8 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 ```
 
 - **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. The dashboard compares it with the AI's working time.
-- `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
-- A PR stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
+- `line`, `source_branch`, `branch` and `pr_target` follow `git-workflow` → The routing decision, are derived from the issue's `customer_name`, and are the same for every changed repo.
+- The PR stage is done only when **every** changed repo has its PR merged and the human confirms verification. Everything after that — promotion to the QA environment, any port onto another line, the post-QA merge into `base-development` — is human work and is not tracked here.
 - `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `max_iterations` counts evaluation rounds (light 1, full 2); after the last one, a failing ticket gets one final fix round that is not evaluated. `evaluated_head` is each changed repo's `HEAD` when the evaluator ran, and `final_head` its `HEAD` after the final fix round; a PR is raised only while `HEAD` still equals the one the gate accepted. A track forced with `--lite` is recorded in the track decision and in `human_confirmations` as `track: light (forced with --lite)`.
 - A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block.
 - A `schema_version: 2` ticket was worked by the old Analyzer and Designer. On resume, keep its `analysis.md` and `design.md` as they are (never rename them); map status `ANALYZING` or `DESIGNING` to `PLANNING`; if it has no design yet, run the Planner with the existing analysis as input, and it writes `plan.md`; if it already has one, treat the design as the plan and set `track: full`. Then set `schema_version: 3`.
@@ -230,7 +228,7 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 
 **What must become a decision record**
 
-- The work type, flow, branch name and source branch (`harness-core`, `git-workflow`).
+- The work type, line, branch name, source branch and PR target (`harness-core`, `git-workflow`).
 - The set of repos to change, and why each other repo is context only.
 - The track (light or full), with the reason against `harness-core` → Tracks; moving to full supersedes it.
 - **bug:** the root cause, once the Planner is confident in it. **feature:** the scope — acceptance criteria in, explicitly out, assumptions — once confirmed; and a slicing decision or a recorded override when a story is too big.

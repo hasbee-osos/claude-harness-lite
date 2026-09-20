@@ -103,13 +103,13 @@ Use no extra flags, and keep the default permission mode so you approve each com
 
 ```
 1. Reads the ticket from Jira (attachments and recordings included)
-2. Proposes the work type, flow and branch name          ⏸ you confirm
+2. Proposes the work type, line and branch name          ⏸ you confirm
 3. The Planner traces the code across all repos and writes the plan
 4. Shows the repos to change and the proposed track      ⏸ you confirm (no branch exists before this)
 5. Creates the same ticket branch in each changed repo
 6. Implementor → Evaluator (light: 1 round, full: 2); a remaining FAIL gets one final fix round, which you review in the PR
 7. PASS: pushes the branches and gives one compare link per repo   ⏸ you open the PRs and paste the URLs back
-8. After base-qa verification, a later /work raises the customer-sandbox PRs (PR stage 2)
+   (promotion to the QA env, any port onto another line, and the post-QA merge stay with you)
 ```
 
 It also stops when:
