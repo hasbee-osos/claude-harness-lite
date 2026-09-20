@@ -26,7 +26,7 @@ This is an enterprise **engineering harness for an existing product**. It delive
 | `harness-core` | these rules, the workspace, work types, tracks | every command and agent |
 | `engineering-standards` | team conventions per stack, change principles, testing | Planner, Implementor, Evaluator |
 | `brain` | everything written to `sis-brain` | orchestrating commands only |
-| `git-workflow` | flows, branch names, PR targets, protected branches, commits | orchestrating commands, Implementor |
+| `git-workflow` | source branch and PR target from the Jira Customer Name field, branch names, resolve branches, protected branches, commits | orchestrating commands, Implementor |
 | `jira-attachments` | downloading attachments, frames from recordings | orchestrating commands |
 | `input-packets` | QA / SME questions as a paste-ready Jira comment | orchestrating commands |
 
