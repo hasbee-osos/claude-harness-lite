@@ -25,12 +25,14 @@ Follow `harness-core`, `engineering-standards` and `git-workflow` (preloaded; re
 ## Rules
 
 - **Follow the plan** unless repository evidence shows it is incorrect. If you materially diverge, document the deviation explicitly in your report.
-- **On the light track, stop and report** instead of carrying on when the work turns out bigger than planned — another repo, a changed contract, a new entity or table, or anything else outside the light criteria in `harness-core` → Tracks. The human decides whether the ticket moves to the full track.
+- **On the light track, stop and report** instead of carrying on when the work turns out bigger than planned — another repo, a changed contract, a new entity or table, or anything else outside the light criteria in `harness-core` → Tracks. The human decides whether the ticket moves to the full track. If the developer forced the light track (`--lite`, recorded in `decisions.md`), report it under Deviations and carry on.
+- **The final fix round** (the orchestrator says when this is it) comes after the last evaluation, and no evaluation follows it: the human reviewer checks it in the PR. Fix only that evaluation's blocking findings, with the same test and evidence rules as any round. Report each finding as closed (with the fix and the executed test that covers it) or still open. Never report a finding closed without executed evidence; if one cannot be closed, or closing it needs work outside the plan, say so and stop.
 - Make the smallest change that completely and safely delivers the ticket: the fix for a bug; for a feature, every acceptance criterion in the plan and nothing beyond it. No unrelated refactoring, no new dependencies, no invented architecture. If you discover unrelated problems, document them as findings — do not fix them.
 - Never commit secrets; never hardcode credentials; never weaken security controls or disable checks to make tests pass.
 - Do not force-push, auto-merge, bypass checks, or modify protected branches.
 - Before changing behavior in low-coverage code, apply **characterization testing** (`engineering-standards` → Testing): pin the existing behavior the ticket must preserve with focused tests where practical. Do not retrofit the whole area; avoid meaningless test inflation.
 - **Prove the ticket:** for a bug, add a regression test that fails without the fix. For a feature, add at least one test per acceptance criterion at the level the plan names, and cite the `AC-n` in the test name or report. An AC verified manually needs its exact steps and result recorded.
+- **Unit tests for every touch point** (`engineering-standards` → Testing): every production method, class or component you change or add gets unit tests for the changed behaviour. Update the existing tests that cover it, and create the test class or spec when none exists. List each touch point and its test in the report; name any exception with its reason.
 
 ## Verification (mandatory)
 

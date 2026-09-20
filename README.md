@@ -6,7 +6,7 @@ A Claude Code plugin that takes a **Jira bug or story** on the SIS product (Spri
 /work GSIS-12345
 
 Jira → Planner → you confirm repos + track → Implementor → Evaluator ── PASS ──→ PRs → you review and merge
-                                                  └── FAIL → fix and re-evaluate (light: 2 rounds, full: 3) → escalate to you
+                                                  └── FAIL → fix → (full only: evaluate again) → final fix → PRs → you review the final fixes
 ```
 
 Claude never merges, approves, force-pushes, pushes to protected branches or writes to Jira. Those stay with you.
@@ -93,6 +93,7 @@ Use no extra flags, and keep the default permission mode so you approve each com
 |---|---|
 | `/work <ticket-id-or-url>` | Moves the ticket forward from wherever it stands: plan → implement ⇄ evaluate → PRs. Re-run it to continue after any stop, even days later or on another machine |
 | `/work <ticket> plan` | Stops once the plan is written. Use it as a cheap check of the root cause or scope and the repos before a full run |
+| `/work <ticket> --lite` | Forces the light track: one evaluation round, then a final fix round, then PRs. The Planner still flags anything that would normally make it full |
 | `/work` | No ticket given: continues the ticket you were last working on |
 | `/brain` | Lists recent tickets from the brain. Read-only |
 | `/brain <ticket>` | Shows a ticket's status, timeline, locked decisions, iterations, token usage and PRs. Read-only |
@@ -106,7 +107,7 @@ Use no extra flags, and keep the default permission mode so you approve each com
 3. The Planner traces the code across all repos and writes the plan
 4. Shows the repos to change and the proposed track      ⏸ you confirm (no branch exists before this)
 5. Creates the same ticket branch in each changed repo
-6. Implementor → Evaluator, repeated on blocking findings only
+6. Implementor → Evaluator (light: 1 round, full: 2); a remaining FAIL gets one final fix round, which you review in the PR
 7. PASS: pushes the branches and gives one compare link per repo   ⏸ you open the PRs and paste the URLs back
 8. After base-qa verification, a later /work raises the customer-sandbox PRs (PR stage 2)
 ```
@@ -115,7 +116,7 @@ It also stops when:
 
 - **The Planner needs answers** (`NEEDS_INPUT`). It writes a short, paste-ready Jira comment to the ticket's brain folder: `qa-packet.md` for a bug, `sme-packet.md` for a story. Post it on the ticket. Once it's answered, run `/work <ticket>` again; the harness reads the answers from Jira and asks you to confirm them.
 - **A light ticket turns out bigger than planned.** You decide whether it moves to the full track.
-- **The evaluation rounds run out.** It writes an `escalation-report.md` and hands the ticket back to you.
+- **The final fix round cannot close a blocking finding.** It writes an `escalation-report.md` and hands the ticket back to you.
 - **A repo is dirty, or Jira can't be read.**
 
 If you fix something by hand on the ticket branch, `/work` re-evaluates before it raises any PR.
@@ -124,13 +125,14 @@ If you fix something by hand on the ticket branch, `/work` re-evaluates before i
 
 ## 3. Light and full tracks
 
-The Planner proposes a track and you confirm it together with the repos. The Evaluator runs on both.
+The Planner proposes a track and you confirm it together with the repos, or you force light with `--lite`. The Evaluator runs at least once on both, and every change gets unit tests for each method or component it touches.
 
 | | **Light** | **Full** |
 |---|---|---|
 | Fits | A bug with a proven root cause, or a story with at most 3 confirmed acceptance criteria. At most 2 repos, at most an additive contract change. No new entity, workflow or notification event. Nothing that touches auth, deletion checks or existing rows | Everything else |
 | Plan | Full understanding; the change, tests and AC coverage in a few lines | Every section in full, including cross-repo contracts and the regression surface |
-| Evaluation rounds | Max 2 | Max 3 |
+| Flow | implement → evaluate → final fix → PR | implement → evaluate → implement → evaluate → final fix → PR |
+| Evaluation rounds | 1 | 2 |
 
 The exact criteria are in [`skills/harness-core/SKILL.md`](skills/harness-core/SKILL.md) → Tracks.
 

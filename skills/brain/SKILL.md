@@ -61,13 +61,13 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **Work type, flow and branch confirmed** | `decisions.md` (flow decision stating the work type) | `human_confirmed`, `decision_locked` | `work_type`, `flow`, `source_branch`, `branch`, `pr_targets`, `human_confirmations` | `<ID>: flow and branch confirmed` |
 | **Plan written** | `plan.md` (revision → `plan-2.md`); `decisions.md` (root cause or scope; and, once Part 2 is written, approach, test strategy, contract or schema choices, deviations); the input packet for NEEDS_INPUT | `stage_start`, `stage_end` (stage `plan`), `decision_locked`, and `input_requested` if blocked | `plan`, `artifacts`, `status` (`AWAITING_REPO_CONFIRMATION` or `NEEDS_INPUT`), `blocked_on` | `<ID>: plan written - READY` / `- NEEDS_INPUT` |
 | **Answers received** for a packet | — | `input_received` | clear `blocked_on`, `status` | with the next milestone |
-| **Repos and track confirmed** | `decisions.md` (repo set; track with its reason) | `human_confirmed` (`repos_to_change`, `track`), `decision_locked` | `repos`, `context_repos`, `track`, `max_iterations` (2 light, 3 full), `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos and track confirmed` |
-| **Track changed** (light → full) | `decisions.md` (new track decision superseding the old) | `human_confirmed`, `decision_locked`, `decision_superseded` | `track: full`, `max_iterations: 3`, `status: PLANNING` | `<ID>: moved to full track` |
+| **Repos and track confirmed** | `decisions.md` (repo set; track with its reason) | `human_confirmed` (`repos_to_change`, `track`), `decision_locked` | `repos`, `context_repos`, `track`, `max_iterations` (evaluation rounds: 1 light, 2 full), `human_confirmations`, `status: IMPLEMENTING` | `<ID>: repos and track confirmed` |
+| **Track changed** (light → full) | `decisions.md` (new track decision superseding the old) | `human_confirmed`, `decision_locked`, `decision_superseded` | `track: full`, `max_iterations: 2`, `status: PLANNING` | `<ID>: moved to full track` |
 | **Branch created or reused** (per repo) | — | `branch_created` | `repos.<repo>.branch_created` | `<ID>: branches created` (once, after all repos) |
-| **Implementation reported** | `implementation-report-<n>.md`; `decisions.md` for any convention deviation | `stage_start`, `stage_end`, `decision_locked` if any | `implementation`, `artifacts`, `status: EVALUATING` | `<ID>: implementation <n>` |
+| **Implementation reported** | `implementation-report-<n>.md`; `decisions.md` for any convention deviation | `stage_start`, `stage_end`, `decision_locked` if any | `implementation`, `artifacts`, `status: EVALUATING` (after the **final fix round**: `repos.<repo>.final_head` and `status` stays `IMPLEMENTING` until PRs are prepared) | `<ID>: implementation <n>` (final round: `<ID>: final fix round - <k> of <m> findings closed`) |
 | **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status`, `repos.<repo>.evaluated_head` (the commit evaluated in each repo) | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
-| **Escalated** (cap hit or harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
+| **Escalated** (the final fix round could not close a finding, or the harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
 | **PRs prepared** | `pr-<repo>-<target>.md` per repo × target | `pr_prepared` per repo × target | `prs`, `pr_targets[].status`, `status: PR_STAGE_<n>` | `<ID>: PRs prepared - stage <n>` |
 | **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
@@ -125,7 +125,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
   "created_at": "2026-09-16T09:10:00Z",
   "updated_at": "2026-09-16T11:42:00Z",
   "iteration": 2,
-  "max_iterations": 3,
+  "max_iterations": 2,
   "track": "light | full",
   "workspace": "C:/sis-workspace",
   "work_type": "bug | feature",
@@ -133,8 +133,8 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
   "source_branch": "base-development",
   "branch": "base/bugfix/GSIS-12345-short-desc",
   "repos": {
-    "sis-product-sis-admin-backend": { "role": "change", "branch_created": true, "evaluated_head": "3f9c2e1" },
-    "sis-product-sis-frontend":      { "role": "change", "branch_created": true, "evaluated_head": "a41d07b" }
+    "sis-product-sis-admin-backend": { "role": "change", "branch_created": true, "evaluated_head": "3f9c2e1", "final_head": null },
+    "sis-product-sis-frontend":      { "role": "change", "branch_created": true, "evaluated_head": "a41d07b", "final_head": null }
   },
   "context_repos": ["sis-product-sis-student-service"],
   "pr_targets": [
@@ -175,7 +175,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 - **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. The dashboard compares it with the AI's working time.
 - `flow`, `source_branch`, `branch` and `pr_targets` follow `git-workflow` and are the same for every changed repo.
 - A PR stage is done only when **every** changed repo has its PRs merged for that stage and the human confirms verification.
-- `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `evaluated_head` is each changed repo's `HEAD` when the evaluator ran; a PR is raised only while `HEAD` still equals it.
+- `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `max_iterations` counts evaluation rounds (light 1, full 2); after the last one, a failing ticket gets one final fix round that is not evaluated. `evaluated_head` is each changed repo's `HEAD` when the evaluator ran, and `final_head` its `HEAD` after the final fix round; a PR is raised only while `HEAD` still equals the one the gate accepted. A track forced with `--lite` is recorded in the track decision and in `human_confirmations` as `track: light (forced with --lite)`.
 - A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block.
 - A `schema_version: 2` ticket was worked by the old Analyzer and Designer. On resume, keep its `analysis.md` and `design.md` as they are (never rename them); map status `ANALYZING` or `DESIGNING` to `PLANNING`; if it has no design yet, run the Planner with the existing analysis as input, and it writes `plan.md`; if it already has one, treat the design as the plan and set `track: full`. Then set `schema_version: 3`.
 

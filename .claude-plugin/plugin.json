@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "engineering-harness",
   "displayName": "Claude Code Engineering Harness",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Minimalist enterprise engineering harness for Jira bugs and features: plan/implement/evaluate workflow on a light or full track, with an independent quality gate, bounded iteration, and human-controlled merge.",
   "author": {
     "name": "SIS Engineering"

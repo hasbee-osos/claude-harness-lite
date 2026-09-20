@@ -10,13 +10,13 @@ This is an enterprise **engineering harness for an existing product**. It delive
 ## Ground rules
 
 - **Jira is the source of work context.** Never fabricate ticket content. If Jira is unavailable, stop and ask. Attachments are part of that context: screen recordings and screenshots are read on every ticket that has them (`jira-attachments`), and one that could not be read is recorded as a gap, never silently skipped. They stay on the local machine.
-- **Three agents** divide the work: Planner → Implementor → Evaluator. The Planner understands the ticket and plans the change in one pass; the Evaluator is independent of both and must never be skipped, on either track.
+- **Three agents** divide the work: Planner → Implementor → Evaluator. The Planner understands the ticket and plans the change in one pass; the Evaluator is independent of both and must never be skipped, on either track: every ticket is evaluated at least once before any PR.
 - **The brain is the durable record.** The orchestrating command writes each run's state, journal, decisions and artifacts to the ticket folder `<workspace>/sis-brain/tickets/<TICKET-ID>/`, as specified only in `brain`. Agents return their artifact to the orchestrator; they do not write the brain. Never put chain-of-thought, secrets or bulk file dumps there, and never commit the brain into a product repo.
 - **Decisions are locked and citable.** Work type and flow, track, repos, root cause (bug) or scope and acceptance criteria (feature), fix or design approach, test strategy, convention deviations and the evaluator verdict each become a numbered record (`D-1`, `D-2`, …) in the ticket's `decisions.md`. Later stages cite the ID (`per D-3`). Changing course takes a new record that supersedes the old one. **Contradicting a locked decision without superseding it is a blocking evaluator finding.**
 - **Humans retain final authority.** Never auto-merge, bypass checks, force-push, modify protected branches, approve your own PR or hide evaluator failures.
 - **Touch only confirmed repos.** The human confirms which repos a ticket changes; every other repo is read-only context.
 - **Evidence-based verification.** Never claim tests passed unless they were executed; record the command and the real result. Compilation is not verification, and passing tests are not "safe".
-- **Bounded iteration.** The Implementor/Evaluator loop runs at most 3 iterations on the full track and 2 on the light track, and only blocking findings start another one. After that, stop and escalate to the human.
+- **Bounded iteration, then human review.** The Evaluator runs at most once on the light track and twice on the full track, and only blocking findings start another round. When the last evaluation still has blocking findings, the Implementor makes one final fix round and the PR goes to the human reviewer, with those fixes listed as not re-evaluated. If the final round cannot close a finding, stop and escalate to the human.
 - **Team conventions outrank generic best practice** (`engineering-standards`). Make the smallest change that completely and safely delivers the ticket. Document unrelated problems as findings; do not fix them.
 
 ## Skills
@@ -74,19 +74,21 @@ The Planner flags a story as too big when it has more than about 8 ACs; new beha
 
 ## Tracks
 
-Every ticket runs on one of two tracks, so the process costs what the ticket needs. The Planner proposes the track with its reason; the human confirms it together with the repos to change, and it is locked as a decision.
+Every ticket runs on one of two tracks, so the process costs what the ticket needs. The Planner proposes the track with its reason; the human confirms it together with the repos to change, and it is locked as a decision. **`/work <ticket> --lite` forces the light track:** the Planner plans at light depth and lists any light criterion below that the ticket does not meet as a risk, the track is not asked again, and the decision records that the developer forced it.
 
 | | **light** | **full** |
 |---|---|---|
 | Plan | Understanding in full; the change, tests and AC coverage in a few lines | Every section in full, including cross-repo contracts and the complete regression surface |
-| Implement ⇄ evaluate | at most 2 iterations | at most 3 iterations |
-| Evaluator | always runs | always runs |
+| Flow | implement → evaluate → final fix → PR | implement → evaluate → implement → evaluate → final fix → PR |
+| Evaluation rounds | 1 | 2 |
+| After a PASS | PR straight away | PR straight away |
+| Final fix round | the last evaluation's blocking findings only, not re-evaluated; the human reviewer checks them in the PR | same |
 
-A ticket is **light** only when all of these hold; otherwise it is **full**:
+Unless the developer forces it with `--lite`, a ticket is **light** only when all of these hold; otherwise it is **full**:
 
 - **bug:** the root cause is established with evidence. **feature:** at most 3 acceptance criteria, all confirmed (none draft).
 - At most 2 repos change, and any change to a contract between them is additive (a new optional field or a new endpoint), never a changed or removed one.
 - No new entity or table, no new workflow, approval flow or notification event.
 - Nothing touching authentication, authorization (`@PreAuthorizeGrant`), deletion checks, or existing rows (backfills, data fixes).
 
-If implementation shows a light ticket is bigger than planned, the Implementor stops and reports it; the harness proposes moving the ticket to full, and the human decides. A light ticket that fails its second evaluation is escalated with the same proposal. Moving to full is a new decision that supersedes the track decision, and the Planner is re-run to write the full plan as the next revision.
+If implementation shows a light ticket is bigger than planned, the Implementor stops and reports it; the harness proposes moving the ticket to full, and the human decides. On a ticket forced light with `--lite`, the Implementor reports it but carries on, because the developer already chose the light journey. Moving to full is a new decision that supersedes the track decision, and the Planner is re-run to write the full plan as the next revision.
