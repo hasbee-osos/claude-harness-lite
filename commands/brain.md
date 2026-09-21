@@ -37,7 +37,7 @@ Close with one sentence on what a person would do next to move the ticket — bu
 1. `git -C sis-brain pull --rebase`.
 2. If `sis-brain/dashboard/build.js` is missing, say the brain has no dashboard yet and stop.
 3. Read `sis-brain/dashboard/artifact.json`.
-   - **It has a `url`:** follow `brain` → Publishing. Show the build summary. If the build fails, show the error and stop. If the publish is refused because this person does not own the page, say that only the owner named in `artifact.json` can update it. Never publish a second copy.
+   - **It has a `url`:** follow `brain` → Publishing. Show the build summary. If the build fails, show the error and stop. If the publish is refused because this person has no edit access to the page, say so and suggest asking the owner named in `artifact.json` to add them as an editor from the page's Share menu. Never publish a second copy.
    - **It is missing or has no `url`:** this is the first publish. Build and read the page as `brain` → Publishing says, ask the human to confirm they want to own the dashboard page, then publish the file as a new artifact with favicon `🧠` and a one-sentence description. Write `{"url": "<url>", "owner": "<display name the human gives>", "published_at": "<UTC ISO-8601>"}` to `artifact.json`, commit it as `dashboard: first publish`, and push.
 4. Give the human the page link.
 
