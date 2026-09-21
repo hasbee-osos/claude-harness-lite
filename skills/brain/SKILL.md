@@ -116,6 +116,11 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     "issue_type": "Bug",
     "epic": { "key": "GSIS-2491", "name": "Exam Controller App" },
     "sprint": { "name": "Sustainment Sprint 21", "start": "2026-09-16", "end": "2026-09-29" },
+    "sprints": [
+      { "name": "Sustainment Sprint 20", "state": "closed", "start": "2026-09-04", "end": "2026-09-15" },
+      { "name": "Sustainment Sprint 21", "state": "active", "start": "2026-09-16", "end": "2026-09-29" }
+    ],
+    "links": [{ "key": "GSIS-20628", "type": "Relates", "direction": "outward" }],
     "assignee": "Display Name",
     "estimate": "3h",
     "customer_name": ["Product Core Feature"],
@@ -174,7 +179,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 }
 ```
 
-- **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. `customer_name` is the *Customer Name* field's values and `labels` the issue's labels (the customer QA tags such as `SIS-GCET-QA`). `subtasks` lists each sub-task's key, type, original estimate and time logged, as Jira writes them (`null` when empty); developers often estimate and log the dev work on a sub-task rather than on the ticket. Read each sub-task with `view: "full"`, because a search does not return time tracking. The dashboard compares the estimate (or, when it is empty, the non-QA sub-tasks' estimates) and the logged time with the AI's working time.
+- **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one; `sprints` is every sprint in the issue's Sprint field, oldest first, so a ticket that spills into the next sprint keeps its history and the dashboard can split its work by sprint. `links` is the issue's linked issues (key, link type, direction), so a defect raised as its own ticket is tied to the ticket it was raised against. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. `customer_name` is the *Customer Name* field's values and `labels` the issue's labels (the customer QA tags such as `SIS-GCET-QA`). `subtasks` lists each sub-task's key, type, original estimate and time logged, as Jira writes them (`null` when empty); developers often estimate and log the dev work on a sub-task rather than on the ticket. Read each sub-task with `view: "full"`, because a search does not return time tracking. The dashboard compares the estimate (or, when it is empty, the non-QA sub-tasks' estimates) and the logged time with the AI's working time.
 - `line`, `source_branch`, `branch` and `pr_target` follow `git-workflow` → The routing decision, are derived from the issue's `customer_name`, and are the same for every changed repo.
 - **The harness's part ends when the PRs are raised** (`PR_STAGE_1`, recorded with `handed_off`). Review, merge, promotion to the QA environment, any port onto another line and the post-QA merge into `base-development` are human work and are not tracked here. If review comments or a QA issue bring the ticket back, it is reopened (`commands/work.md` → Coming back after hand-off); `DONE` is set only when a developer confirms the ticket is finished. `PR_STAGE_2` appears only in tickets recorded before the single-PR flow; read it as `PR_STAGE_1`.
 - `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `max_iterations` counts evaluation rounds (light 1, full 2); after the last one, a failing ticket gets one final fix round that is not evaluated. `evaluated_head` is each changed repo's `HEAD` when the evaluator ran, and `final_head` its `HEAD` after the final fix round; a PR is raised only while `HEAD` still equals the one the gate accepted. A track forced with `--lite` is recorded in the track decision and in `human_confirmations` as `track: light (forced with --lite)`.
@@ -250,6 +255,7 @@ Every decision gets a record with sequential IDs `D-1`, `D-2`, … Use `template
 - A record starts `LOCKED`. Later stages must follow it and cite the ID (`per D-3`).
 - To change course, append a **new** decision that states why, and set the old one to `SUPERSEDED by D-n`. Never edit a locked record's substance.
 - **Contradicting a locked decision without superseding it is a blocking evaluator finding**, even if the code works.
+- **A QA defect reopens the decisions it touches.** When a ticket comes back with a defect, the decisions are re-checked before the next round (`commands/work.md` → Coming back after hand-off); the defect is a valid reason to supersede one. Keeping a decision the defect disproves is a blocking evaluator finding. A linked ticket's decisions are context for a defect ticket, never locked for it.
 
 ## `index.jsonl` and `current.json`
 
