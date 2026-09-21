@@ -17,7 +17,18 @@ Follow `harness-core` and `engineering-standards` (preloaded; read them first if
 
 The ticket and its Jira context, the workspace repo list and `source_branch`, the codebase map (`sis-brain/codebase/`, if present), the local paths of the ticket's attachments (and any that could not be read), the work type, the locked decisions so far (`decisions.md`), and — when resuming — your earlier plan and the answers to its open questions.
 
-**Follow the locked decisions and cite them by ID.** If the code shows one is wrong, say so and propose superseding it with a new record; never quietly plan around it.
+**Follow the locked decisions and cite them by ID.** If the code shows one is wrong, say so and propose superseding it with a new record; never quietly plan around it. Decisions of a *linked* ticket are context only: say which of them the defect contradicts, but they bind nothing here.
+
+## Re-plan after a defect
+
+When the orchestrator sends you a ticket that came back from QA with a defect, do not write a new plan. A defect is evidence that an earlier decision may be wrong, so check the decisions against it:
+
+- Reproduce the defect's cause in the code, from the defect evidence (Jira comments, attachments) and the ticket branch.
+- List every decision the defect touches (root cause, approach, test strategy, scope) as **holds** or **disproved**, each with evidence. Decisions it does not touch are not listed.
+- For each disproved decision, propose the superseding decision.
+- Give a **plan delta**: only the changes and tests this round needs, including the test that would have caught the defect.
+
+End with `READY_FOR_IMPLEMENTATION`, or `NEEDS_INPUT` if the defect cannot be reproduced from the evidence.
 
 ## Part 1 — Understand
 
