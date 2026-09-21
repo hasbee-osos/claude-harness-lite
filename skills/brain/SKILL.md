@@ -209,8 +209,9 @@ Event vocabulary — a closed set. Do not invent events; add one here first.
 | `escalated` | the iteration cap is hit or the harness stops | `reason` |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
 | `stage_corrected` | a recorded stage time is found wrong (a late `stage_end`, a wrong clock, a stall with no AI activity) | `stage`, `iteration`, `original_start` (the `ts` of the `stage_start` it corrects), `start`, `end`, `excluded` (spans `{start, end}` with no AI activity, may be empty), `reason` |
+| `ts_corrected` | other events were recorded at a wrong time (a wrong clock) | `original_ts`, `corrected_ts`, `reason`; optional `events` (the event names to move; default all at `original_ts` except stage events, which `stage_corrected` covers) |
 
-`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair.
+`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair. If other events carry a wrong time, append a `ts_corrected` per wrong timestamp and correct the same times in `state.json` directly, since it is not append-only.
 
 ## `decisions.md` — decisions locked, with justification
 
