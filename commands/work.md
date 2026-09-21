@@ -37,8 +37,8 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
    | `IMPLEMENTING` | step 9 |
    | `EVALUATING` | step 10 |
    | `ESCALATED` | show the escalation report and ask the human: move to the full track (light only), start another round with their guidance, or stop |
-   | `PR_STAGE_1` | if a changed repo's `HEAD` differs from the commit the PR gate last accepted (`evaluated_head`, or `final_head` after a final fix round), someone committed since: evaluate again if an evaluation round is left, otherwise ask the human whether to evaluate once more or raise the PR listing those commits as unreviewed; otherwise step 12 |
-   | `DONE` | say so and stop |
+   | `PR_STAGE_1` | if the developer is back with review comments or a QA issue, go to **Coming back after hand-off**. Otherwise, if a changed repo's `HEAD` differs from the commit the PR gate last accepted (`evaluated_head`, or `final_head` after a final fix round), someone committed since: evaluate again if an evaluation round is left, otherwise ask the human whether to evaluate once more or raise the PR listing those commits as unreviewed; otherwise step 12 |
+   | `DONE` | say so; if the developer says QA found a problem on this ticket, go to **Coming back after hand-off**, otherwise stop |
 
 ## Plan
 
@@ -73,5 +73,14 @@ Every ticket is evaluated at least once; the evaluation may never be bypassed, o
     - Record **PRs prepared**. **Never merge, approve, bypass checks or force-push.**
 13. **Publish to Jira** if the configured Jira MCP supports it: the concise final summary (plan, implementation and evaluation status, track, repos, iterations, PR references). Never intermediate agent messages or chain-of-thought. If the MCP does not support writes (or a guard blocks them), say so and leave the record in the brain.
 14. **Close the run.** Record **Run stops**, with `next_action` saying what the human does next.
+
+## Coming back after hand-off
+
+Raising the PRs ends the harness's part. A developer brings the ticket back with `/work` when review comments arrive or QA finds a problem on this ticket (a QA bug raised as a new Jira ticket is worked as its own ticket).
+
+1. If why they are back is not clear from their message, ask in one line: review comments, a QA issue, or neither (then carry on as the resume row says).
+2. Read the feedback: the PR's review comments (`gh pr view <url> --comments` if `gh auth status` succeeds, otherwise ask the developer to paste them), or the ticket's new Jira comments. Record **Ticket reopened** with the reason and a reference to the feedback.
+3. Record **New iteration** with the feedback as its reason and run step 9 with only that feedback as scope, then step 10: one implement pass and one evaluation, whatever the track. Evaluation is never skipped; a `FAIL` follows step 11 with the rounds left.
+4. Push the ticket branch (never force); an open PR updates by itself. Raise a PR only for a repo that has none. Record **PRs prepared**, then **Run stops**.
 
 At the end, present to the user: the track (and whether `--lite` forced it), the last verdict and whether a final fix round followed it, the iteration count, per-repo PR references (or compare links and descriptions), and remaining limitations.
