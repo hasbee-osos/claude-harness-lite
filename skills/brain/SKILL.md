@@ -23,7 +23,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── runs.jsonl             ← one record per collection window (telemetry)
 │   └── harness.prom           ← Prometheus textfile exposition
 ├── dashboard/                 ← the leadership dashboard (see Dashboard)
-│   ├── build.js, template.html, prices.json   ← committed
+│   ├── build.js, template.html, labels.json, prices.json   ← committed
 │   ├── artifact.json          ← the published page's URL — committed
 │   └── dist/                  ← generated page and costs.json — NOT committed
 ├── codebase/                  ← the codebase map (see Codebase map)
@@ -68,8 +68,9 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status`, `repos.<repo>.evaluated_head` (the commit evaluated in each repo) | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
 | **Escalated** (the final fix round could not close a finding, or the harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
-| **PRs prepared** | `pr-<repo>-<target>.md` per repo | `pr_prepared` per repo | `prs`, `status: PR_STAGE_1` | `<ID>: PRs prepared` |
+| **PRs prepared** | `pr-<repo>-<target>.md` per repo | `pr_prepared` per repo, then one `handed_off` (`to: reviewers`, `refs`: the PR URLs or compare links) | `prs`, `status: PR_STAGE_1` | `<ID>: PRs prepared` |
 | **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
+| **Ticket reopened** (a developer brings a handed-off or closed ticket back) | — | `ticket_reopened` | `status: IMPLEMENTING`, `next_action` | `index.jsonl` line; `<ID>: reopened - <reason>` |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
 | **Codebase notes corrected** (an artifact has Codebase map corrections) | `codebase/<repo>.md` outside the ticket folder (see Codebase map) | — | — | `codebase: <repo> notes - <ID>`, a commit of its own |
 
@@ -79,7 +80,7 @@ When a stage stops on questions (`input-packets`), record with that stage: `arti
 
 ### Index lines
 
-The `index.jsonl` line is appended at **started**, every **NEEDS_INPUT** stop, every **evaluation verdict**, **escalated** and **closed** — the moments a reader scanning recent work cares about.
+The `index.jsonl` line is appended at **started**, every **NEEDS_INPUT** stop, every **evaluation verdict**, **escalated**, **reopened** and **closed** — the moments a reader scanning recent work cares about.
 
 ## Syncing
 
@@ -119,7 +120,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     "estimate": "3h",
     "refreshed_at": "2026-09-16T09:10:00Z"
   },
-  "status": "PLANNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | PR_STAGE_2 | DONE | NEEDS_INPUT | ESCALATED",
+  "status": "PLANNING | AWAITING_REPO_CONFIRMATION | IMPLEMENTING | EVALUATING | PR_STAGE_1 | DONE | NEEDS_INPUT | ESCALATED",
   "next_action": "Re-run the implementor with the blocking findings E-1 and E-3 from evaluation-2.md",
   "blocked_on": null,
   "created_at": "2026-09-16T09:10:00Z",
@@ -172,7 +173,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
 
 - **`jira`** is read from the Jira issue when the ticket starts and **refreshed on every resume**, because the sprint and assignee change while the folder does not. `epic` comes from the issue's parent (or Epic Link) when that parent is an Epic; a Sub-task takes its parent story's epic. `sprint` is the issue's open (active or future) sprint, else the most recent closed one. Use `null` for anything the issue does not have — never guess. Record only the assignee's display name. `estimate` is the issue's *Dev Lead Estimation* field exactly as written in Jira (for example `3h` or `1d 4h`), or `null` if it is empty. The dashboard compares it with the AI's working time.
 - `line`, `source_branch`, `branch` and `pr_target` follow `git-workflow` → The routing decision, are derived from the issue's `customer_name`, and are the same for every changed repo.
-- The PR stage is done only when **every** changed repo has its PR merged and the human confirms verification. Everything after that — promotion to the QA environment, any port onto another line, the post-QA merge into `base-development` — is human work and is not tracked here.
+- **The harness's part ends when the PRs are raised** (`PR_STAGE_1`, recorded with `handed_off`). Review, merge, promotion to the QA environment, any port onto another line and the post-QA merge into `base-development` are human work and are not tracked here. If review comments or a QA issue bring the ticket back, it is reopened (`commands/work.md` → Coming back after hand-off); `DONE` is set only when a developer confirms the ticket is finished. `PR_STAGE_2` appears only in tickets recorded before the single-PR flow; read it as `PR_STAGE_1`.
 - `track` and `max_iterations` are set when the human confirms the repos and track (`harness-core` → Tracks). `max_iterations` counts evaluation rounds (light 1, full 2); after the last one, a failing ticket gets one final fix round that is not evaluated. `evaluated_head` is each changed repo's `HEAD` when the evaluator ran, and `final_head` its `HEAD` after the final fix round; a PR is raised only while `HEAD` still equals the one the gate accepted. A track forced with `--lite` is recorded in the track decision and in `human_confirmations` as `track: light (forced with --lite)`.
 - A `schema_version: 1` file has no `jira` block (it may have a top-level `jira_url`). On resume, add the block.
 - A `schema_version: 2` ticket was worked by the old Analyzer and Designer. On resume, keep its `analysis.md` and `design.md` as they are (never rename them); map status `ANALYZING` or `DESIGNING` to `PLANNING`; if it has no design yet, run the Planner with the existing analysis as input, and it writes `plan.md`; if it already has one, treat the design as the plan and set `track: full`. Then set `schema_version: 3`.
@@ -207,11 +208,13 @@ Event vocabulary — a closed set. Do not invent events; add one here first.
 | `evaluation` | the evaluator returns a verdict | `verdict`, `blocking`, `non_blocking`, `iteration` |
 | `pr_prepared` | a PR description or compare link is produced | `repo`, `stage`, `target`, `url` |
 | `escalated` | the iteration cap is hit or the harness stops | `reason` |
+| `handed_off` | the harness passes the ticket to people outside it (PRs raised, and any later stage that hands work on) | `to` (an audience, e.g. `reviewers`), `refs` (URLs or links, may be empty) |
+| `ticket_reopened` | a developer brings a handed-off or closed ticket back | `from_status`, `reason` (`review`, `qa_bug` or `other`), `ref` (the PR comment or Jira comment, or null) |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
 | `stage_corrected` | a recorded stage time is found wrong (a late `stage_end`, a wrong clock, a stall with no AI activity) | `stage`, `iteration`, `original_start` (the `ts` of the `stage_start` it corrects), `start`, `end`, `excluded` (spans `{start, end}` with no AI activity, may be empty), `reason` |
 | `ts_corrected` | other events were recorded at a wrong time (a wrong clock) | `original_ts`, `corrected_ts`, `reason`; optional `events` (the event names to move; default all at `original_ts` except stage events, which `stage_corrected` covers) |
 
-`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair. If other events carry a wrong time, append a `ts_corrected` per wrong timestamp and correct the same times in `state.json` directly, since it is not append-only.
+`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). **Adding a stage or an audience needs no dashboard change:** a new `stage` value in `stage_start`/`stage_end`, or a new `audience` in `input_requested`, appears on the dashboard as it is; add a display name and colour to `sis-brain/dashboard/labels.json` only to improve how it reads. Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair. If other events carry a wrong time, append a `ts_corrected` per wrong timestamp and correct the same times in `state.json` directly, since it is not append-only.
 
 ## `decisions.md` — decisions locked, with justification
 
@@ -315,7 +318,7 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
 
 ## Dashboard
 
-The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: what is in progress and who it is waiting on, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on QA or an SME for packet answers, waiting on the developer, or idle. Per ticket it shows the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
+The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: who holds each ticket now (Claude, a person, handed off outside the harness, or closed) and how often it came back after a hand-off, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on someone (keyed by the journal's `audience`), handed off, or idle. The page lists no stages or events of its own: it shows what the journal contains, named through `dashboard/labels.json`. Per ticket it shows the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
 - **No money figures on the page.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. The data is kept: `dashboard/prices.json` holds list API prices per model, and each build writes the API-equivalent cost per ticket and stage to `dashboard/dist/costs.json` and prints the total in its summary, for the maintainers. It is never embedded in or published with the page. Tokens stay in each ticket's committed `metrics.json`.
