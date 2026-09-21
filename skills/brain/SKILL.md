@@ -209,8 +209,9 @@ Event vocabulary — a closed set. Do not invent events; add one here first.
 | `escalated` | the iteration cap is hit or the harness stops | `reason` |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
 | `stage_corrected` | a recorded stage time is found wrong (a late `stage_end`, a wrong clock, a stall with no AI activity) | `stage`, `iteration`, `original_start` (the `ts` of the `stage_start` it corrects), `start`, `end`, `excluded` (spans `{start, end}` with no AI activity, may be empty), `reason` |
+| `ts_corrected` | other events were recorded at a wrong time (a wrong clock) | `original_ts`, `corrected_ts`, `reason`; optional `events` (the event names to move; default all at `original_ts` except stage events, which `stage_corrected` covers) |
 
-`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair.
+`stage` is one of `plan`, `implement`, `evaluate`, `pr`, `publish` (`analyze` and `design` appear in tickets recorded before v0.4). Timestamps are UTC ISO-8601. Durations are measured from these events, so write `stage_end` as soon as the stage's artifact is written, not later. If a stage time is wrong, append a `stage_corrected` with times taken from evidence (brain commits, transcripts); the dashboard and telemetry use it in place of the original pair. If other events carry a wrong time, append a `ts_corrected` per wrong timestamp and correct the same times in `state.json` directly, since it is not append-only.
 
 ## `decisions.md` — decisions locked, with justification
 
@@ -318,7 +319,7 @@ The dashboard is a private page on claude.ai that shows leadership how the harne
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
 - **No money figures on the page.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. The data is kept: `dashboard/prices.json` holds list API prices per model, and each build writes the API-equivalent cost per ticket and stage to `dashboard/dist/costs.json` and prints the total in its summary, for the maintainers. It is never embedded in or published with the page. Tokens stay in each ticket's committed `metrics.json`.
-- `dashboard/artifact.json` holds the published page's URL and owner. **Only the owner can update the page**; everyone else can view it.
+- `dashboard/artifact.json` holds the published page's URL and owner. **The owner and anyone they have given edit access** (from the page's Share menu) can update the page, at the same URL; everyone else can view it. The owner is the person who manages that sharing.
 - The page is as current as the last publish. Publishing never changes a ticket record.
 
 ### Publishing
@@ -326,7 +327,7 @@ The dashboard is a private page on claude.ai that shows leadership how the harne
 The dashboard is republished in two ways, both following the same steps:
 
 - **`/brain publish`** — on demand. It may also make the **first** publish, which creates the page and `artifact.json`.
-- **When a run stops** — the last step of **Run stops**, after the brain is pushed, so the page shows the run's latest milestone without anyone remembering to publish. It is best-effort: it never makes the first publish, never commits, never asks the human anything, and never fails or delays the run's result. If any step below cannot be done — no `dashboard/build.js`, no `url` in `artifact.json`, no Artifact tool in the session, the build fails, or the publish is refused because this person is not the owner — skip publishing and say so in one line (for example "Dashboard not refreshed: only its owner can publish; it will catch up at their next publish"). A colleague's run is still pushed to the brain and appears at the owner's next publish.
+- **When a run stops** — the last step of **Run stops**, after the brain is pushed, so the page shows the run's latest milestone without anyone remembering to publish. It is best-effort: it never makes the first publish, never commits, never asks the human anything, and never fails or delays the run's result. If any step below cannot be done — no `dashboard/build.js`, no `url` in `artifact.json`, no Artifact tool in the session, the build fails, or the publish is refused because this person has no edit access to the page — skip publishing and say so in one line (for example "Dashboard not refreshed: you don't have edit access to the page; ask <owner from artifact.json> to add you as an editor. It will catch up at the next publish by an editor"). The run is still pushed to the brain and appears at the next publish by anyone with edit access.
 
 Steps:
 
