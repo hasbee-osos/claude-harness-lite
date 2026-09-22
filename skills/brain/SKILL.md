@@ -27,7 +27,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── artifact.json          ← the published page's URL — committed
 │   └── dist/                  ← generated page and costs.json — NOT committed
 ├── codebase/                  ← the codebase map (see Codebase map)
-│   ├── README.md, build.js, repos.json   ← committed
+│   ├── README.md, build.js, blast.js, repos.json   ← committed
 │   ├── <repo>.md              ← hand-written notes per repo — committed
 │   └── generated/             ← indexes rebuilt after each fetch — NOT committed
 └── tickets/<TICKET-ID>/       ← "the ticket folder"
@@ -40,6 +40,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
     ├── evaluation-1.md, -2.md, …
     ├── escalation-report.md
     ├── pr-<repo>-<target>.md
+    ├── blast.json             ← how far the change reaches (see Codebase map)
     └── metrics.json           ← per-ticket rollup (written by telemetry)
 ```
 
@@ -68,7 +69,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **Evaluation returned** | `evaluation-<n>.md`, `decisions.md` (verdict) | `stage_start`, `stage_end`, `evaluation`, `decision_locked` | `evaluation`, `artifacts`, `status`, `repos.<repo>.evaluated_head` (the commit evaluated in each repo) | `<ID>: evaluation <n> - <VERDICT>, <k> blocking` |
 | **New iteration** | — | `iteration_start` | `iteration` | with the next milestone |
 | **Escalated** (the final fix round could not close a finding, or the harness stops) | `escalation-report.md` | `escalated` | `status: ESCALATED` | `<ID>: escalated` |
-| **PRs prepared** | `pr-<repo>-<target>.md` per repo | `pr_prepared` per repo, then one `handed_off` (`to: reviewers`, `refs`: the PR URLs or compare links) | `prs`, `status: PR_STAGE_1` | `<ID>: PRs prepared` |
+| **PRs prepared** | `pr-<repo>-<target>.md` per repo; `blast.json` (run `node sis-brain/codebase/blast.js <ID>` first) | `pr_prepared` per repo, then one `handed_off` (`to: reviewers`, `refs`: the PR URLs or compare links) | `prs`, `status: PR_STAGE_1` | `<ID>: PRs prepared` |
 | **Run stops** (any reason) | — | — | `next_action` | `index.jsonl` line; write `{}` to `current.json`; `<ID>: <what happened>`; then publish the dashboard (see Dashboard) |
 | **Ticket reopened** (a developer brings a handed-off or closed ticket back) | — | `ticket_reopened` | `status: IMPLEMENTING`, `next_action` | `index.jsonl` line; `<ID>: reopened - <reason>` |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
@@ -323,11 +324,12 @@ The telemetry collector (`hooks/scripts/telemetry.js`) writes `metrics/runs.json
 - **Rebuild** at `/work` step 5, after the fetch and at the ticket's source branch: `node sis-brain/codebase/build.js --ref origin/<source_branch>`. A customer-line ticket then sees that line's screens, endpoints and tables, not only base's. If the output reports a fallback, pass that line to the Planner. This is best-effort. If `build.js` is missing, skip it silently. If it fails, say so in one line, carry on, and tell the Planner the map may be stale.
 - **Hand-written notes**, `codebase/<repo>.md`, about one page per repo: layout, where things live, build and test commands, known pitfalls. Only facts checked against the code or a real run.
 - **Corrections.** A plan or implementation report may end with **Codebase map corrections**. The orchestrator applies each correction to the notes, keeping them short, replacing the wrong fact rather than appending, and writing nothing from the ticket beyond the fact itself. It commits the change separately as `codebase: <repo> notes - <TICKET-ID>`. A gap in a generated index can't be fixed in the notes; tell the human it is a `build.js` gap for the brain's maintainers.
+- **Blast radius.** When PRs are prepared, `node sis-brain/codebase/blast.js <TICKET-ID>` diffs each changed repo's ticket branch against `origin/<source_branch>` and places the files with the generated indexes. It records which screens the change edits, which APIs and tables it changes, and which other screens call a changed API. It writes the result to `blast.json` in the ticket folder, together with every product area's screen count, so the dashboard can draw the whole product to scale. It is a script: no agent pass, no tokens. It is a file of its own, so agents never need to read it. A later round overwrites it. If the map isn't built, it still records the file and repo counts.
 - **Adding a repo** means an entry in `repos.json` (`kind`: `angular` or `spring`), a notes file, and a check of its generated indexes. That is a maintainer's change, not a ticket's.
 
 ## Dashboard
 
-The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: who holds each ticket now (Claude, a person, handed off outside the harness, or closed) and how often it came back after a hand-off, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on someone (keyed by the journal's `audience`), handed off, or idle. The page lists no stages or events of its own: it shows what the journal contains, named through `dashboard/labels.json`. Per ticket it shows the timeline, locked decisions, iterations and PRs. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
+The dashboard is a private page on claude.ai that shows leadership how the harness worked each ticket: who holds each ticket now (Claude, a person, handed off outside the harness, or closed) and how often it came back after a hand-off, delivery by sprint and epic, what it delivered (PRs, tickets resolved without a code change), what the Evaluator caught before any PR, decisions recorded, AI working time by stage against the Jira estimate, and where the elapsed time went: the AI working, waiting on someone (keyed by the journal's `audience`), handed off, or idle. The page lists no stages or events of its own: it shows what the journal contains, named through `dashboard/labels.json`. Per ticket it shows the timeline, locked decisions, iterations, PRs and the blast radius (from `blast.json`) as a wheel of the product. A sprint-wide wheel shows where the shown tickets' changes land, and where two tickets touch the same area. It is built entirely from the committed files above — nothing machine-local — so any clone of the brain produces the same page.
 
 - `dashboard/build.js` reads the brain and writes `dashboard/dist/index.html` (the page with the data embedded). Node only, no dependencies.
 - **No money figures on the page.** The team uses a Claude subscription, so a token-priced dollar amount would read to leadership as a bill. The data is kept: `dashboard/prices.json` holds list API prices per model, and each build writes the API-equivalent cost per ticket and stage to `dashboard/dist/costs.json` and prints the total in its summary, for the maintainers. It is never embedded in or published with the page. Tokens stay in each ticket's committed `metrics.json`.
