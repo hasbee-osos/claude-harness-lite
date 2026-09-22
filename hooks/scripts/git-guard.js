@@ -68,7 +68,8 @@ const GH_ALLOWED = {
 };
 
 function ghViolation(cmd) {
-  const re = /(?:^|[\s;&|(`$])gh(?:\.exe)?(?=\s|$)([^;&|\n)`]*)/g;
+  // gh by name, or by path (C:\Program Files\GitHub CLI\gh.exe, quoted or not)
+  const re = /(?:^|[\s;&|(`$\/\\'"])gh(?:\.exe)?['"]?(?=\s|$)([^;&|\n)`]*)/g;
   let m;
   while ((m = re.exec(cmd)) !== null) {
     const args = m[1].trim().split(/\s+/).filter(Boolean);

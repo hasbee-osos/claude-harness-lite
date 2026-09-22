@@ -5,7 +5,8 @@
  *   node hooks/scripts/git-guard.selftest.js
  *
  * Covers the brain exception (marker-gated commit/push on any branch), the destructive
- * operations that stay blocked there, and the protected-branch behaviour of product repos.
+ * operations that stay blocked there, the protected-branch behaviour of product repos, and the
+ * GitHub CLI allowlist (gh called by name or by path).
  * It is not the guard's full tokenizer suite - run it after any change to the write loop.
  */
 "use strict";
@@ -103,6 +104,21 @@ console.log("\nReads are unaffected");
 check("status in brain", `git -C "${brain}" status --porcelain`, "ALLOW");
 check("log in product", `git -C "${product}" log --oneline -5`, "ALLOW");
 check("pull in brain", `git -C "${brain}" pull --ff-only`, "ALLOW");
+
+console.log("\nGitHub CLI allowlist, by name or by path");
+const GH = "C:\\Program Files\\GitHub CLI\\gh.exe";
+check("gh pr merge", `gh pr merge 5`, "DENY");
+check("gh auth token", `gh auth token`, "DENY");
+check("gh api POST", `gh api -X POST repos/o/r/issues`, "DENY");
+check("double-quoted path: pr merge", `"${GH}" pr merge 5`, "DENY");
+check("PowerShell call operator: pr merge", `& '${GH}' pr merge 5`, "DENY");
+check("escaped forward-slash path: pr review", `C:/Program\\ Files/GitHub\\ CLI/gh.exe pr review 5 --approve`, "DENY");
+check("unix path: workflow run", `/usr/bin/gh workflow run ci.yml`, "DENY");
+check("gh pr create", `gh pr create --base main --title x`, "ALLOW");
+check("quoted path: pr create", `"${GH}" pr create --base main`, "ALLOW");
+check("quoted path: --version", `"${GH}" --version`, "ALLOW");
+check("gh pr checks", `gh pr checks 5`, "ALLOW");
+check("gh api GET", `gh api repos/o/r/pulls/5/comments`, "ALLOW");
 
 console.log("\n" + (failures === 0 ? "ALL PASS" : failures + " FAILURE(S)"));
 process.exit(failures === 0 ? 0 : 1);
