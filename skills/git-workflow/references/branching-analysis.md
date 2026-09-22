@@ -153,7 +153,9 @@ Sample: the 15 most recent non-resolve ticket branches per line; origin = candid
 | `gcet/*` | 15 from `gcet-sandbox-qa` | 14 from `gcet-sandbox-qa`, 1 from `gcet-qa` |
 | `gutech/*` | 15 from `gutech-sandbox-qa` | 15 from `gutech-sandbox-qa` |
 
-Unchanged from the previous window, and still the opposite of what the skill asks for.
+Unchanged from the previous window. The skill follows this practice: `base/*` is cut from `base-sandbox-qa`.
+
+Cutting from the sandbox is safe for the PR back into `base-sandbox-qa`: everything the branch inherits is already in the target, so the diff is the ticket alone, and it starts from the code the PR lands on. The exposure sits in the later human steps. A port of the ticket branch into `gcet-sandbox-qa`/`gutech-sandbox-qa`, or the post-QA merge into `base-development`, carries every sandbox commit not yet on that line — the mechanism behind §12.4 and §12.6. §5 narrows this, because `base-development` is already inside both customer lines.
 
 ## 7. Branch names used for PR heads
 
@@ -252,7 +254,6 @@ The skill routes on the Jira **Customer Name** field and stops at one PR per rep
 
 | Skill rule for agents | Team practice | Why the skill differs |
 |---|---|---|
-| Cut `base/*` from **`base-development`** | 14–15/15 cut from `base-sandbox-qa` | A branch cut from the sandbox carries other unverified tickets into the PR |
 | Resolve branch named `<ticket>-<target-branch>-conflict-resolved` | 28% follow it | One predictable name per target |
 | Types `feature`/`bugfix` only | `devops`, `hotfix`, `task`, `bug-fix` occasionally | Consistent names for CI validation and reporting |
 | Keep the Jira key's case | Mixed case in practice | Traceability to Jira |
