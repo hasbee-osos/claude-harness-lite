@@ -19,7 +19,7 @@ Read the **Customer Name** field on the Jira issue. It decides the line, the sou
 
 | Customer Name | Line | Cut the ticket branch from | Raise the PR against |
 |---|---|---|---|
-| `Product Core Feature` | `base` | **`base-development`** | **`base-sandbox-qa`** |
+| `Product Core Feature` | `base` | **`base-sandbox-qa`** | **`base-sandbox-qa`** |
 | `GCET` | `gcet` | **`gcet-sandbox-qa`** | **`gcet-sandbox-qa`** |
 | `GUTech` | `gutech` | **`gutech-sandbox-qa`** | **`gutech-sandbox-qa`** |
 | empty, or any other value | — | **Stop — do not guess.** | |
@@ -28,7 +28,9 @@ Match the value case-insensitively, ignoring surrounding whitespace.
 
 **When Customer Name is empty or unrecognised**, stop before creating any branch and raise an input packet (`input-packets`): `sme-packet.md` for a feature (Story, Task, Improvement), `qa-packet.md` for a bug. OSOS and every other line reach this row on purpose — agents do not work them.
 
-`base` tickets are cut from `base-development`, not from `base-sandbox-qa`, even though the team commonly does the latter: a branch cut from the sandbox carries other people's unverified work into the PR.
+**Base-line reminder** — show this to the developer whenever the line is `base`, when proposing the branch and in the PR's next human steps:
+
+> This branch is cut from `base-sandbox-qa` because that is how developers already work. It therefore also carries other tickets that have not been verified yet. Porting it to `gcet-sandbox-qa` / `gutech-sandbox-qa`, promotion, and the post-QA merge into `base-development` follow the team's existing process for raising those PRs from `base-sandbox-qa` — check that only this ticket's change reaches each line.
 
 ## Branch naming
 
