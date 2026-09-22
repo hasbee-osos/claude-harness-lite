@@ -58,11 +58,6 @@ claude plugin install engineering-harness@sis-harness
 
 Check it with `claude plugin list`. Do not clone or copy the harness into the workspace to use it.
 
-### 1.5 Smoke-test the guards (before your first ticket)
-
-- **Git guard:** ask Claude to run `git -C <repo-on-a-protected-branch> commit --allow-empty -m guard-test`. It must be blocked by `git-guard`. If it goes through, Node is missing or the plugin didn't load. Undo it with `git -C <repo> reset --soft HEAD~1`.
-- **Jira guard:** ask Claude to comment on a ticket. It must be blocked by `jira-guard`. Reading the ticket and its attachments must still work.
-
 Screen recordings need no setup. The first time one comes up, the harness installs its own ffmpeg under `~/.claude-harness/tools/`.
 
 ### Updating the harness
@@ -74,7 +69,22 @@ claude plugin marketplace update sis-harness
 claude plugin update engineering-harness@sis-harness
 ```
 
-Then run `/reload-plugins` or restart Claude. An update only arrives if the PR raised `version` in `.claude-plugin/plugin.json`.
+Or, from inside Claude, run `/plugin`:
+
+1. On the **Marketplaces** tab, choose `sis-harness` and update it.
+2. On the **Installed** tab, choose `engineering-harness` and update it.
+
+Then run `/reload-plugins` or restart Claude. An update only arrives if the PR raised `version` in `.claude-plugin/plugin.json`. Check the installed version with `claude plugin list`.
+
+**Turning the harness off and on.** The same `/plugin` → **Installed** entry can disable and enable the harness, as can the command line:
+
+```powershell
+claude plugin disable engineering-harness@sis-harness
+claude plugin enable engineering-harness@sis-harness
+```
+
+- Disable it for sessions that are not harness work, so its hooks and commands stay out of the way. Enable it again before the next `/work`.
+- If an update doesn't seem to take effect, disable the plugin, enable it again, then run `/reload-plugins` or restart Claude.
 
 ---
 
