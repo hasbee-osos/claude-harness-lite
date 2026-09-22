@@ -30,6 +30,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── README.md, build.js, blast.js, repos.json   ← committed
 │   ├── <repo>.md              ← hand-written notes per repo — committed
 │   └── generated/             ← indexes rebuilt after each fetch — NOT committed
+├── verify/<TICKET-ID>/        ← /verify records: script.md, verify-<n>.md, jira comments, runs.jsonl (specified in qa-verify)
 └── tickets/<TICKET-ID>/       ← "the ticket folder"
     ├── state.json             ← the resume point
     ├── journal.jsonl          ← append-only event log

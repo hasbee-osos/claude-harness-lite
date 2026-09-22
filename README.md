@@ -105,6 +105,7 @@ Use no extra flags, and keep the default permission mode so you approve each com
 | `/work <ticket> plan` | Stops once the plan is written. Use it as a cheap check of the root cause or scope and the repos before a full run |
 | `/work <ticket> --lite` | Forces the light track: one evaluation round, then a final fix round, then PRs. The Planner still flags anything that would normally make it full |
 | `/work` | No ticket given: continues the ticket you were last working on |
+| `/verify <ticket> [--env <env>]` | AI pre-screen of a deployed ticket in Chrome on `base-qa`, `gcet-qa` or `gutech-qa`. See below |
 | `/brain` | Lists recent tickets from the brain. Read-only |
 | `/brain <ticket>` | Shows a ticket's status, timeline, locked decisions, iterations, token usage and PRs. Read-only |
 | `/brain publish` | Rebuilds and republishes the leadership dashboard. `/work` also does this whenever a run stops |
@@ -130,6 +131,30 @@ It also stops when:
 - **A repo is dirty, or Jira can't be read.**
 
 If you fix something by hand on the ticket branch, `/work` re-evaluates before it raises any PR.
+
+### `/verify`: AI pre-screen on a QA environment
+
+`/verify <ticket> [--env base-qa|gcet-qa|gutech-qa]` has Claude run the ticket's checks in Chrome, then report PASS / FAIL / INCONCLUSIVE with a GIF of the run. **Developers** run it once their ticket is promoted to `base-qa`. **QA** runs it with `--env gcet-qa` or `--env gutech-qa` once the port is promoted there. Both use the same saved test script (`sis-brain/verify/<ticket>/script.md`). It checks that the change is merged and deployed on that environment before it opens a browser, and it is a pre-screen: QA still signs off, and Jira status is never changed.
+
+```
+1. Reads the ticket; picks the environment (the ticket's line, or --env)
+2. Writes the test script, or loads the saved one              ⏸ you confirm
+3. Checks the change is merged into and deployed on that environment
+4. The tester agent signs in with a test account and runs the checks in Chrome
+5. Report + paste-ready Jira comment in sis-brain/verify/<ticket>/   ⏸ you paste it on the ticket
+```
+
+**One-time setup, for developers and QA:**
+
+| Item | How |
+|---|---|
+| Claude in Chrome extension | Install it in Chrome or Edge, sign in with your Claude account, run `/chrome` in Claude Code. In the extension's site permissions, allow only the QA hosts in `skills/qa-verify/environments.md` |
+| A Chrome profile named **SIS QA verify** | Sign in once with each test account you use and let Chrome save the password. Claude types only the username; Chrome fills the password, so Claude never sees it |
+| GitHub CLI | Install `gh` and run `gh auth login` with read access to the product repos (used for the deployment check; QA needs no repo clones) |
+| Jira MCP and the brain | As in §1.2 and §1.3. Without the brain the run still works, but the script is not shared with the other role |
+| Network | VPN to the QA hosts, as today |
+
+The QA environment URLs, Keycloak realms and test-account usernames are in `skills/qa-verify/environments.md`. QA maintains that file.
 
 ---
 
