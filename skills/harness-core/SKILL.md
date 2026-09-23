@@ -29,6 +29,7 @@ This is an enterprise **engineering harness for an existing product**. It delive
 | `git-workflow` | source branch and PR target from the Jira Customer Name field, branch names, resolve branches, protected branches, commits | orchestrating commands, Implementor |
 | `jira-attachments` | downloading attachments, frames from recordings | orchestrating commands |
 | `input-packets` | QA / SME questions as a paste-ready Jira comment | orchestrating commands |
+| `lessons` | turning a correction into something the next ticket benefits from | orchestrating commands, Planner, Implementor, Evaluator |
 
 ## Workspace
 
