@@ -18,6 +18,8 @@ This is not optional bookkeeping. It is what lets the next session continue the 
 
 When a plan or an implementation report includes **Codebase map corrections**, apply them as `brain` → Codebase map says, right after recording that artifact.
 
+**When a correction arrives — a packet answer that contradicts the plan, a review comment, a QA defect, or a blocking evaluator finding — consider a lesson** (`lessons`). Record at most one per correction, only when a future ticket would otherwise go wrong the same way, and confirm it with the human in the same breath as the feedback. Record **Lesson recorded**. This is the only way anything learned on this ticket reaches the next one.
+
 Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an escalation — record **Run stops**. Its last part republishes the leadership dashboard (`brain` → Publishing); that is best-effort and never changes the run's outcome.
 
 ## Starting or resuming
@@ -32,7 +34,7 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
    | `status` | Continue at |
    |---|---|
    | `PLANNING` | step 6 |
-   | `NEEDS_INPUT` | read the answers from the ticket's Jira comments and confirm them with the human (`input-packets`), then step 6 |
+   | `NEEDS_INPUT` | read the answers from the ticket's Jira comments and confirm them with the human (`input-packets`); where an answer contradicts what the plan assumed, consider a lesson (`lessons`); then step 6 |
    | `AWAITING_REPO_CONFIRMATION` | step 7 |
    | `IMPLEMENTING` | step 9 |
    | `EVALUATING` | step 10 |
@@ -63,6 +65,8 @@ Whenever the run stops — at any step, including a `NEEDS_INPUT` stop or an esc
 
 Every ticket is evaluated at least once; the evaluation may never be bypassed, on either track. After the last evaluation, the next reviewer is the human.
 
+A blocking finding is a correction the harness caught itself: where one shows a misreading a future ticket would repeat, consider a lesson (`lessons`) alongside the fix.
+
 ## PRs
 
 12. **Raise the PR against `pr_target`**, for every changed repo.
@@ -83,5 +87,6 @@ Raising the PRs ends the harness's part. A developer brings the ticket back with
 3. **A QA issue means an earlier decision may be wrong**, so re-check them before changing code: dispatch the Planner in **re-plan after a defect** mode with the defect evidence, the current plan and `decisions.md`. Record **Plan written** (as `plan-<n>.md`) and, for each decision it reports disproved, a new decision that supersedes it and cites the defect. The status stays `IMPLEMENTING`: repos and track are confirmed again (step 7) only if the delta adds a repo. Review comments go straight to step 4, unless one challenges a decision rather than the code; then treat it as a QA issue.
 4. Record **New iteration** with the feedback as its reason and run step 9 with that feedback (and any re-plan delta) as scope, then step 10: one implement pass and one evaluation, whatever the track. Evaluation is never skipped; a `FAIL` follows step 11 with the rounds left.
 5. Push the ticket branch (never force); an open PR updates by itself. Raise a PR only for a repo that has none. Record **PRs prepared**, then **Run stops**.
+6. **Record what the feedback taught** (`lessons`), before the run stops: this is the richest correction the harness gets, because a human found it after the evaluation passed. Classify each one — a fact about the product that the run misread, or a gap in how the harness reasoned — and confirm it with the developer while they are still here.
 
 At the end, present to the user: the track (and whether `--lite` forced it), the last verdict and whether a final fix round followed it, the iteration count, per-repo PR references (or compare links and descriptions), and remaining limitations.

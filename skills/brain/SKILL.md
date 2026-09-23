@@ -30,6 +30,9 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 │   ├── README.md, build.js, blast.js, repos.json   ← committed
 │   ├── <repo>.md              ← hand-written notes per repo — committed
 │   └── generated/             ← indexes rebuilt after each fetch — NOT committed
+├── lessons/                   ← what corrections taught the harness (see the `lessons` skill)
+│   ├── index.jsonl            ← one line per lesson, so a stage can pick the few that apply
+│   └── <id>.md                ← one lesson per file
 ├── verify/<TICKET-ID>/        ← /verify records: script.md, verify-<n>.md, jira comments, runs.jsonl (specified in qa-verify)
 └── tickets/<TICKET-ID>/       ← "the ticket folder"
     ├── state.json             ← the resume point
@@ -50,7 +53,7 @@ The **brain** is the team's shared record: a git repo cloned into the workspace 
 - **Never inside a product repo.** The brain sits at the workspace root, beside the repo clones. If `sis-brain` is missing or is not a git repo, say so and ask the human to clone it — do not silently start a local-only brain.
 - **Iteration artifacts are numbered, never overwritten.** `evaluation-1.md` survives iteration 2. `state.json` `artifacts` records the latest of each.
 - **Keep the brain out of code searches.** The workspace needs a `.ignore` file at its root containing `sis-brain/`. ripgrep honours `.ignore`, so cross-repo code searches stop returning harness records as matches. `Grep` with an explicit path into the brain still works. Create the file on first use if it is missing, or append the line if it exists without it. It sits in the workspace, which is not a git repo, so there is nothing to commit.
-- **On first use**, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore` and `.gitattributes` as above — and commit them.
+- **On first use**, seed anything missing at the repo root — `.harness-brain`, `README.md` (from `templates/brain-readme.md`), `.gitignore`, `.gitattributes` and an empty `lessons/index.jsonl` as above — and commit them.
 
 ## What each stage records
 
@@ -75,6 +78,7 @@ Every write to the brain happens at one of these moments. Commands say *when* a 
 | **Ticket reopened** (a developer brings a handed-off or closed ticket back) | — | `ticket_reopened` | `status: IMPLEMENTING`, `next_action` | `index.jsonl` line; `<ID>: reopened - <reason>` |
 | **Ticket closed** (human confirms done) | — | `ticket_closed` | `status: DONE` | `index.jsonl` line; `<ID>: closed` |
 | **Codebase notes corrected** (an artifact has Codebase map corrections) | `codebase/<repo>.md` outside the ticket folder (see Codebase map) | — | — | `codebase: <repo> notes - <ID>`, a commit of its own |
+| **Lesson recorded** (a correction arrived — a packet answer, a review comment, a QA defect, or a blocking evaluator finding — and the `lessons` skill says it is worth recording) | `lessons/<id>.md` and an appended `lessons/index.jsonl` line, both outside the ticket folder | `lesson_recorded` | — | `lessons: <id> - <ID>`, a commit of its own |
 
 ### Input packets
 
@@ -221,6 +225,7 @@ Event vocabulary — a closed set. Do not invent events; add one here first.
 | `handed_off` | the harness passes the ticket to people outside it (PRs raised, and any later stage that hands work on) | `to` (an audience, e.g. `reviewers`), `refs` (URLs or links, may be empty) |
 | `ticket_reopened` | a developer brings a handed-off or closed ticket back | `from_status`, `reason` (`review`, `qa_bug` or `other`), `ref` (the PR comment or Jira comment, or null) |
 | `ticket_closed` | the human confirms the work is done | `outcome` |
+| `lesson_recorded` | a correction is written to `lessons/` (the `lessons` skill) | `id`, `kind` (`product` or `harness`), `source` (`packet_answer`, `review`, `qa_defect` or `evaluator`), `status` (`proposed` or `confirmed`) |
 | `stage_corrected` | a recorded stage time is found wrong (a late `stage_end`, a wrong clock, a stall with no AI activity) | `stage`, `iteration`, `original_start` (the `ts` of the `stage_start` it corrects), `start`, `end`, `excluded` (spans `{start, end}` with no AI activity, may be empty), `reason` |
 | `ts_corrected` | other events were recorded at a wrong time (a wrong clock) | `original_ts`, `corrected_ts`, `reason`; optional `events` (the event names to move; default all at `original_ts` except stage events, which `stage_corrected` covers) |
 

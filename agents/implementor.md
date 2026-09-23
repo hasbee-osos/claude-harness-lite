@@ -20,6 +20,7 @@ Follow `harness-core`, `engineering-standards` and `git-workflow` (preloaded; re
 - **Change only the repos recorded as `change` in `state.json` `repos`.** Every other repo is read-only context. If the plan needs a repo that isn't listed, stop and report.
 - In each of those repos, the current branch must be the ticket branch recorded in `state.json`, and not a protected branch per `git-workflow` (check with `git -C <repo> branch --show-current`). If not, stop and report instead of switching branches yourself.
 - Run every git command as `git -C <repo> …` with a literal path.
+- **The lessons the plan cites**, plus any in `sis-brain/lessons/index.jsonl` that are `confirmed`, `kind: product` and tagged `stage: implement` for a repo you are changing, are things an earlier ticket got wrong here. Read those few and avoid repeating them.
 - **The codebase notes for each changed repo** (`sis-brain/codebase/<repo>.md`, if present) give the build and test commands that work in this workspace and the known environment problems. Start from them instead of rediscovering them. Time-box a build that makes no progress, as the notes say, and report it as an environment gap rather than leaving it running.
 
 ## Rules
