@@ -207,6 +207,7 @@ You never edit ticket records by hand. Read it with `/brain`, and for a reopened
   - `git-guard` blocks destructive git, commits and pushes on protected branches, and `gh` writes other than `gh pr create`. The branching strategy is in [`skills/git-workflow/SKILL.md`](skills/git-workflow/SKILL.md).
   - `jira-guard` keeps Jira read-only.
   - `telemetry.js` records tokens and durations per ticket and stage ([`docs/telemetry.md`](docs/telemetry.md)).
+  - `notify.js` raises a desktop notification **only when the run needs you** — open questions, a QA or SME packet ready to post, the Evaluator's verdict, or every agent finished and the PRs ready for review. Routine stage boundaries and ordinary turn endings stay silent. Nothing to install or configure: Windows toast, macOS notification centre and `notify-send` on Linux.
 - **Limitations:**
   - No summary is posted to Jira, because Jira is read-only.
   - Recordings are read as still frames, with no audio.
