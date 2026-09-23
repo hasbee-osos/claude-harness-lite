@@ -142,7 +142,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
   "work_type": "bug | feature",
   "line": "base | gcet | gutech",
   "customer_name": "Product Core Feature",
-  "source_branch": "base-sandbox-qa",
+  "source_branch": "base-development",
   "branch": "base/bugfix/GSIS-12345-short-desc",
   "repos": {
     "sis-product-sis-admin-backend": { "role": "change", "branch_created": true, "evaluated_head": "3f9c2e1", "final_head": null },
@@ -165,7 +165,7 @@ This record is pushed to GitHub, read by the whole team and summarised for leade
     { "session_id": "893ff923-…", "started_at": "2026-09-16T09:10:00Z", "ended_at": null }
   ],
   "human_confirmations": [
-    { "what": "line_and_branch", "at": "2026-09-16T09:18:00Z", "value": "Customer Name 'Product Core Feature' → line base, base/bugfix/GSIS-12345-short-desc, source base-sandbox-qa, PR to base-sandbox-qa" },
+    { "what": "line_and_branch", "at": "2026-09-16T09:18:00Z", "value": "Customer Name 'Product Core Feature' → line base, base/bugfix/GSIS-12345-short-desc, source base-development, PR to base-sandbox-qa" },
     { "what": "repos_to_change", "at": "2026-09-16T10:31:00Z", "value": ["sis-product-sis-admin-backend", "sis-product-sis-frontend"] }
   ],
   "decisions": ["D-1", "D-2", "D-3"],
