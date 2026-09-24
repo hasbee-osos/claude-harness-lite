@@ -72,6 +72,25 @@ Result:  <actual result, e.g. BUILD SUCCESSFUL / 12 tests passed>
 |---|---|---|---|
 | <E-n> | closed / open | <file/symbol> | <command and real result> |
 
+## Conflict resolution
+
+<omit unless a repo's PR target conflicted. One block per repo and target.>
+
+### <repo-folder> → <target>
+
+Resolve branch: <name> (<created | reused>), record: `conflict-resolution-<repo>-<target>.json`
+
+| File | Hunk (line / enclosing block) | Class | Resolution and rationale |
+|---|---|---|---|
+| <path> | <line — `method` or block> | mechanical / semantic (D-n) | <what was kept and why> |
+
+```
+Command: <verification run on the resolve branch>
+Result:  <actual result>
+```
+
+<the `conflicts.js compare` Markdown table, verbatim>
+
 ## Codebase map corrections
 
 <omit this section unless you verified something the repo's codebase notes get wrong or lack, such as a build or test command, a time it takes, or an environment pitfall. One line each, with the command and the real result.>

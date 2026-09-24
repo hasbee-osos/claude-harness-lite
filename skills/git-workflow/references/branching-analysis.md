@@ -125,6 +125,23 @@ Conflict load on every sandbox has grown by 3–6 points over the previous windo
 
 Adherence to the skill's name is unchanged at 28%. Resolve branches keep the ticket's `base/…` prefix, because CI only accepts `base/*/*` into customer sandboxes.
 
+**How conflicts are resolved** — every ticket PR into the three sandboxes, BE and FE, 2026-06-20 → 2026-09-24 (2,023 PRs), classified from the merge commits inside each PR:
+
+| How the PR reached its target | PRs | Share |
+|---|---|---|
+| Clean: no merge commits inside the PR | 1,072 | 53% |
+| Through a resolve branch | 736 | 36% |
+| Target or `base-development` merged straight into the ticket branch | 170 | 8% |
+| Another ticket's branch merged in | 38 | 2% |
+
+About one conflict in five is resolved on the ticket branch itself, which then carries the target into the ticket's other PRs.
+
+**How the 736 resolve branches were built:** cut from the ticket branch with the target merged in, 54%; cut from the target with the ticket's commits re-applied by cherry-pick or by hand (no merge), 37%; cut from the target with the ticket branch merged in, 5%; other, 4%. The skill's construction follows the majority; the re-applied branches have no history link to the ticket's commits.
+
+**Naming in the last 30 days:** 30 of 227 resolve branches used the standard name; others included `-conflict`, `-resolve`, `-base-resolve`, the target placed before the suffix, and a `gcet/base/feature/…` double prefix.
+
+**Replay of `conflicts.js` on real resolve branches** (up to 12 of the most recent resolve PRs per repo and target into `base-` and `gcet-sandbox-qa` since 2026-08-15, BE and FE: 48). 11 were re-applied without a merge and cannot be replayed. Of the other 37, measured at the merge commit and without a resolution record: 17 carry exactly the ticket's change; the rest either contain lines the engineer wrote while resolving (which a record would list for review) or are missing part of the ticket — in one (GSIS-24247, FE), four files of the ticket's change never reached the resolve branch. Some resolve branches also received fix commits after the merge that never went to the ticket branch (GSIS-28533 and GSIS-28663, BE, checked by hand), so the ticket's other PRs lacked them.
+
 ## 5. `base-development` is already contained in the customer lines
 
 This is the largest single change since the previous analysis, and it was not visible in it.
@@ -263,7 +280,7 @@ The skill routes on the Jira **Customer Name** field and stops at one PR per rep
 
 1. **Porting duplicate work is 35–36% of all developer-facing merges** (BE 376 of 1,067; FE 391 of 1,066). Each base ticket is re-resolved per customer line, and the cost grows with every line the product carries.
 2. **Conflict load is rising**: 44% of base-sandbox PRs now need a resolve branch, up from 40% one window ago, with similar rises on both customer lines.
-3. **Resolve branches are not checked against the ticket.** Nothing verifies that `…-conflict-resolved` contains the same change as the ticket branch, so a bad resolution reaches QA unnoticed.
+3. **Resolve branches were not checked against the ticket.** The replay in §4 shows resolutions that dropped part of the ticket and fixes committed only on the resolve branch. The harness now runs `conflicts.js compare` on every resolution it makes; branches resolved by hand outside the harness are still unchecked.
 4. **`base-development` has been merged wholesale into the customer sandboxes** (2026-08-03, 2026-08-05, 2026-09-07). This quietly pushed base-only, never-QA'd work onto `gcet-qa` and `gutech-qa`, and it is the opposite of the staged flow the skill describes. It also means "which line has what" can no longer be answered from PR history alone.
 5. **Isolating a release stream costs a whole cloned line.** To run a hardening sprint in parallel with the QA feature backlog, the team had to cut a branch pair from `gcet-*`, add a CI merge path, write a new reusable deploy workflow and add a deploy job in each of the 8 repos (§10). The branching model offers no cheaper way to stabilise a release while normal work continues, so isolation is bought by duplication — and every clone starts with the source line's full divergence baked in.
 6. **25–32% of tickets in `base-development` show no `base-qa` promotion beforehand**, unchanged from the previous window.

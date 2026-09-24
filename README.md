@@ -118,8 +118,9 @@ Use no extra flags, and keep the default permission mode so you approve each com
 3. The Planner traces the code across all repos and writes the plan
 4. Shows the repos to change and the proposed track      ⏸ you confirm (no branch exists before this)
 5. Creates the same ticket branch in each changed repo
-6. Implementor → Evaluator (light: 1 round, full: 2); a remaining FAIL gets one final fix round, which you review in the PR
-7. PASS: pushes the branches and gives one compare link per repo   ⏸ you open the PRs and paste the URLs back
+6. Implementor → conflict check → Evaluator (light: 1 round, full: 2); a remaining FAIL gets one final fix round, which you review in the PR
+   If the PR target conflicts, it resolves on a resolve branch and proves the result still equals the ticket   ⏸ you decide any semantic conflict
+7. PASS: re-checks conflicts, pushes the branches and gives one compare link per repo   ⏸ you open the PRs and paste the URLs back
    (promotion to the QA env, any port onto another line, and the post-QA merge stay with you)
 ```
 
@@ -131,6 +132,8 @@ It also stops when:
 - **A repo is dirty, or Jira can't be read.**
 
 If you fix something by hand on the ticket branch, `/work` re-evaluates before it raises any PR.
+
+**Merge conflicts.** Before the Evaluator runs, and again before the PR, `/work` dry-runs a merge of each changed repo into its PR target. A clean target gets its PR from the ticket branch. A conflicting one gets a resolve branch, `<ticket-branch>-<target>-conflict-resolved`, cut from the ticket branch with the target merged in. The harness resolves the mechanical conflicts (imports, i18n keys, changesets appended on both sides), asks you about any semantic one, and proves with `conflicts.js compare` that the resolve branch still carries exactly the ticket's change. That proof goes into the PR. The ticket branch itself never takes in a long-lived branch: `git-guard` blocks that merge, because the ticket's other PRs would carry the target along. Rules: `git-workflow` → Merge conflicts.
 
 ### `/verify`: AI pre-screen on a QA environment
 
