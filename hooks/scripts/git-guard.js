@@ -9,6 +9,8 @@
  *     (session cwd, `cd`/`Set-Location`/`pushd`, `git -C`), so it works from a multi-repo
  *     workspace. Write commands whose target repo cannot be determined are denied.
  *  3. Any GitHub CLI (gh) command outside a read-only + PR-create allowlist.
+ *  4. Merging (or pulling) a protected branch into any branch but a conflict resolve branch, so
+ *     a ticket branch never carries a long-lived branch into its other PRs.
  *
  * Exception: the harness's own record repo (the brain) is identified by a BRAIN_MARKER file at
  * its root, not by its folder name. Commits and pushes are allowed there on any branch, because
@@ -58,7 +60,8 @@ const DESTRUCTIVE = [
 
 // git subcommands that create commits on, or publish, a branch.
 const WRITE_SUBCOMMANDS = new Set(["commit", "push", "merge", "rebase", "am", "cherry-pick", "revert"]);
-const WRITE_TEXT = /\bgit(?:\.exe)?\b[^\n;&|]*?\s(commit|push|merge|rebase|am|cherry-pick|revert)\b/g;
+// The lookahead keeps read-only relatives such as `merge-base` and `merge-tree` out.
+const WRITE_TEXT = /\bgit(?:\.exe)?\b[^\n;&|]*?\s(commit|push|merge|rebase|am|cherry-pick|revert)(?![\w-])/g;
 
 // gh runs with the human's full GitHub permissions, so allow only reads and opening PRs.
 const GH_ALLOWED = {
@@ -211,7 +214,7 @@ function gitWrites(cmd, startDir) {
       }
     }
     const sub = args[j] && args[j].value;
-    if (WRITE_SUBCOMMANDS.has(sub)) writes.push({ sub, dir, args: args.slice(j + 1) });
+    if (WRITE_SUBCOMMANDS.has(sub) || sub === "pull") writes.push({ sub, dir, args: args.slice(j + 1) });
   };
 
   for (const t of tokenize(cmd)) {
@@ -274,6 +277,23 @@ function pushDestinations(args) {
   };
 }
 
+// Branches a merge or pull brings in, as named on the command line (remote prefix removed).
+const MERGE_OPTS_WITH_VALUE = new Set(["-m", "-F", "--file", "-s", "--strategy", "-X", "--strategy-option", "--into-name"]);
+function mergeSources(sub, args) {
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    const v = args[i].value;
+    if (["--abort", "--continue", "--quit", "--skip"].includes(v)) return [];
+    if (MERGE_OPTS_WITH_VALUE.has(v)) i++;
+    else if (!v.startsWith("-")) positional.push(v);
+  }
+  const refs = sub === "pull" ? positional.slice(1).map((r) => r.replace(/^\+/, "").split(":")[0]) : positional;
+  return refs.map((r) => r.replace(/^refs\/heads\//, "").replace(/^(refs\/)?(remotes\/)?origin\//, ""));
+}
+
+// Only a resolve branch may take a long-lived branch in (git-workflow → Merge conflicts).
+const RESOLVE_BRANCH = /-conflict-resolved(-\d+)?$/;
+
 let raw = "";
 process.stdin.on("data", (c) => (raw += c));
 process.stdin.on("end", () => {
@@ -318,6 +338,20 @@ process.stdin.on("end", () => {
   }
 
   for (const w of writes) {
+    if (w.sub === "merge" || w.sub === "pull") {
+      const hit = mergeSources(w.sub, w.args).find((s) => isProtected(s, rules));
+      if (hit) {
+        const branch = w.dir === UNKNOWN ? null : currentBranch(w.dir);
+        if (!branch || !RESOLVE_BRANCH.test(branch)) {
+          deny(
+            "Refusing to merge long-lived branch `" + hit + "` into `" + (branch || "an unknown branch") + "`. Only a resolve branch (`<ticket-branch>-<target>-conflict-resolved`) may take a long-lived branch in; see git-workflow → Merge conflicts."
+          );
+        }
+      }
+      // A plain pull only updates the current branch from its upstream; the checks below are for
+      // commands that write commits.
+      if (w.sub === "pull") continue;
+    }
     if (w.dir === UNKNOWN) {
       deny("Cannot determine which repository `git " + w.sub + "` runs in. Use `git -C <literal repo path> " + w.sub + " …`.");
     }

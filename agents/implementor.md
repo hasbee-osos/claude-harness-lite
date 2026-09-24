@@ -47,6 +47,17 @@ Execute the verification layers defined in the plan's Tests section **in each ch
 
 Inspect the final diff of each changed repo (`git -C <repo> diff`) before reporting; confirm the change is scoped to the ticket. Commit on the ticket branch in each repo (small, Jira-key-referencing commits per `git-workflow`). Do not push — pushing happens in the PR stage.
 
+## Resolve mode
+
+The orchestrator dispatches you in **resolve mode** when `conflicts.js check` reports conflicts between a changed repo and the PR target, or when a resolve branch no longer contains the ticket branch's head. Follow `git-workflow` → Merge conflicts exactly; this section only adds what is specific to you.
+
+- **Scope is the conflicted hunks in the `check` output.** Do not extend or improve the change while resolving. This mode, and only this mode, lets you create or switch to the resolve branch the orchestrator names; switch back to the ticket branch when you finish.
+- Create the resolve branch from the ticket branch, or reuse the recorded one (merge the ticket branch into it first when it is behind), then merge `origin/<pr_target>`. Classify every hunk mechanical or semantic by the `git-workflow` table. Read the `engineering-standards` reference only for the stacks of the conflicted files.
+- **Resolve mechanical hunks only.** For each semantic hunk, leave it alone and return what this ticket intended, what the other side intended (its commit and Jira key), a proposed resolution and its risk; the orchestrator asks the developer, then dispatches you again with the confirmed resolutions to apply.
+- **After evaluation** (the orchestrator says so): resolve mechanical hunks only; any semantic hunk is returned, never resolved.
+- When every hunk is resolved: run the plan's verification for the affected code on the resolve branch, commit the merge, write the record `sis-brain/tickets/<ticket>/conflict-resolution-<repo>-<target>.json`, and run `conflicts.js compare … --record`. A failing check is yours to fix before you report — never report a resolution whose equivalence check fails as complete.
+- Do not push. Return the **Conflict resolution** section of `templates/implementation-report.md` and a status: `RESOLVED`, `NEEDS_DEVELOPER` (semantic hunks listed) or `BLOCKED`.
+
 ## Output
 
 Return a single implementation report in your final message, exactly following `templates/implementation-report.md` (one section per changed repository with Changes / Tests / Verification Evidence / Diff Summary, then Acceptance Criteria for a feature / Cross-Repo Consistency / Deviations / Findings / Codebase map corrections when you have any / Status). A correction is something you verified, such as a build command that differs from the notes or a pitfall they don't mention. The orchestrator will write it to `sis-brain/tickets/<ticket>/implementation-report-<iteration>.md`.

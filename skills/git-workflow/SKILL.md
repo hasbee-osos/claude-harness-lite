@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Where to cut a ticket branch from and which branch to raise its PR against, decided by the Jira Customer Name field (Product Core Feature / GCET / GUTech), plus branch naming, conflict resolve branches, protected branches and Git safety rules - no force-push, no auto-merge, no commits on protected branches. Use for all Git operations, branch creation, and PR preparation.
+description: Where to cut a ticket branch from and which branch to raise its PR against, decided by the Jira Customer Name field (Product Core Feature / GCET / GUTech), plus branch naming, merge conflicts (dry-run check, resolve branches, mechanical vs semantic resolution, equivalence proof), protected branches and Git safety rules - no force-push, no auto-merge, no commits on protected branches. Use for all Git operations, branch creation, conflict resolution and PR preparation.
 ---
 
 # Git Workflow
@@ -75,14 +75,58 @@ Never create or use `bypass-all-branches-becarefully` (the CI emergency bypass).
 
 ## Merge conflicts
 
-Roughly 40% of PRs into a sandbox conflict, because others merge into the same branch continuously.
+Over a third of ticket PRs into a sandbox conflict, because others merge into the same branch all day (`references/branching-analysis.md` §4). All of it runs through `scripts/conflicts.js` in this skill's directory — `node "<this skill's base directory>/scripts/conflicts.js" …` — which is read-only and prints JSON:
 
-- **Never merge the target branch into the ticket branch.** Cut a **resolve branch** from the target instead — `git -C <repo> checkout -b <branch>-<target>-conflict-resolved origin/<target>` — merge the ticket branch into it, resolve, and raise the PR from the resolve branch. The ticket branch stays untouched.
-- Keep the ticket branch's line prefix on the resolve branch (`base/…`, `gcet/…`, `gutech/…`); CI validates the source prefix.
-- Resolve only **mechanical** conflicts (imports, adjacent edits, generated or lock files). Re-run verification, and record each resolved file with its rationale in the implementation report so the Evaluator reviews it.
-- **Semantic** conflicts — both sides changed the same logic, or the resolution needs a business decision — stop and escalate to the human.
-- Never blanket `--ours`/`--theirs`; never rebase a pushed branch.
-- Record the resolve branch against its repo in `state.json`, and say in the PR description which ticket branch it resolves.
+| Command | Does |
+|---|---|
+| `conflicts.js check <repo> origin/<target> <head>` | Dry-run merge (`git merge-tree`): clean, or each conflicted file with its hunks, both sides and the enclosing method or block. Touches nothing. |
+| `conflicts.js name <repo> <ticket-branch> origin/<target>` | The resolve-branch name, and any that already exist for that target |
+| `conflicts.js compare <repo> origin/<target> <ticket-branch> <resolve-branch> --record <file>` | Equivalence: the resolve branch carries exactly the ticket's change, apart from recorded resolutions. Returns `pass`, the failed checks and a Markdown table. |
+
+### When to check
+
+`fetch`, then `check` every changed repo against `origin/<pr_target>`: **before the Evaluator runs** (so it reviews any resolution), again **just before raising the PR** (the target moves), and again when a ticket **comes back after hand-off**. `<head>` is the resolve branch when one exists for that target, otherwise the ticket branch.
+
+### The resolve branch
+
+- **Only when `check` reports conflicts for that target.** A clean target gets its PR from the ticket branch. One resolve branch per ticket and target.
+- **Never merge a long-lived branch into the ticket branch** — the target, `base-development` or any protected branch. The ticket branch stays exactly what was implemented and evaluated, because its other PRs must carry only the ticket. `git-guard` blocks such a merge (or `pull`) on anything but a resolve branch.
+- **Name** — use what `name` returns, never a hand-typed variant: `<ticket-branch>-<target>-conflict-resolved`, e.g. `base/bugfix/GSIS-28533-coa-duplicate-scoped-by-university-base-sandbox-qa-conflict-resolved`. It keeps the line prefix CI validates and names the target.
+- **Construction** — cut it from the ticket branch and merge the target in:
+  `git -C <repo> switch -c <resolve-branch> <ticket-branch>`, then `git -C <repo> merge --no-ff origin/<target>`.
+  **Never cherry-pick or re-apply the ticket's commits by hand** onto a fresh branch: history no longer links the PR to the evaluated commits, and any hand-copied change is a new, unreviewed edit.
+- **Reuse** it while its PR is open. When the target moves, merge `origin/<target>` into it again. When the ticket branch gets a fix, the fix goes on the ticket branch and the ticket branch is merged into the resolve branch; then push the resolve branch, because that is what the PR shows. Never commit fixes only on the resolve branch — the ticket's other PRs would miss them. If a resolve PR has already merged and a later change conflicts again, `name` gives the next one (`…-conflict-resolved-2`).
+- Never rebase or force-push it; never blanket `--ours`/`--theirs`.
+
+### Resolving
+
+Classify **each hunk**, not each file:
+
+| Mechanical — resolve it | Semantic — the developer decides |
+|---|---|
+| Both sides add distinct entries at the same place: imports, i18n keys, enum or constant entries, route or module registrations, list items | Both sides modify the same existing lines of a method, query, SQL statement or template |
+| Both sides append Liquibase changesets or changelog `include`s — keep both; never edit, reorder or renumber an existing changeset | One side deletes or moves code the other modifies |
+| Formatting or whitespace only | The merged code compiles, but the combined behaviour is not plainly what both tickets meant |
+| Generated or lock files — regenerate them | Anything that needs a business rule |
+
+For a semantic hunk, do not resolve it. Return what this ticket intended (from the plan), what the other side intended (the commit and Jira key that introduced it: `git -C <repo> log origin/<target> -L<start>,<end>:<file>`), a proposed resolution and its risk. The developer confirms or corrects it in the terminal — it is not a QA or SME packet — and the confirmed resolution is recorded as a decision citing both Jira keys.
+
+After resolving: run the verification the plan names for the affected code on the resolve branch, commit the merge, write the **record** — `conflict-resolution-<repo>-<target>.json` in the ticket folder:
+
+```json
+{ "resolved":  [{ "file": "src/.../FeeService.java", "class": "mechanical", "rationale": "both sides added an import" }],
+  "justified": [{ "file": "src/.../FeeService.java", "line": "import t.Helper;", "reason": "the target already imports t.*" }] }
+```
+
+`resolved` lists every file whose merged content goes beyond either side (including a post-merge fix in a file that did not conflict); `justified` lists any ticket line deliberately not carried over. Then run `compare --record` and put its Markdown table in the implementation report's **Conflict resolution** section.
+
+### Equivalence
+
+`compare` fails if the resolve branch does not contain the ticket branch's head, touches a file the ticket does not (unless recorded), loses a line the ticket adds or removes (unless justified), adds anything beyond the ticket that is not a recorded resolution, or still has conflict markers. A failure is fixed before the PR is raised, never waved through; the Evaluator treats one as blocking.
+
+### In the PR
+
+Raise it from the resolve branch; say in the description which ticket branch it resolves, and include the `compare` table. Record the resolve branch against its repo in `state.json`.
 
 ## Safety rules
 

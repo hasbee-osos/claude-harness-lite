@@ -5,8 +5,9 @@
  *   node hooks/scripts/git-guard.selftest.js
  *
  * Covers the brain exception (marker-gated commit/push on any branch), the destructive
- * operations that stay blocked there, the protected-branch behaviour of product repos, and the
- * GitHub CLI allowlist (gh called by name or by path).
+ * operations that stay blocked there, the protected-branch behaviour of product repos, merges of
+ * long-lived branches (resolve branches only), and the GitHub CLI allowlist (gh called by name or
+ * by path).
  * It is not the guard's full tokenizer suite - run it after any change to the write loop.
  */
 "use strict";
@@ -95,6 +96,21 @@ check("commit on ticket branch", `git -C "${ticket}" commit -m "GSIS-1: fix"`, "
 check("push ticket branch", `git -C "${ticket}" push -u origin base-bugfix-GSIS-1`, "ALLOW");
 check("push ticket branch to protected target", `git -C "${ticket}" push origin HEAD:base-qa`, "DENY");
 
+console.log("\nLong-lived branches merge only into resolve branches");
+const resolve = mkrepo("sis-product-sis-scheduler-service", "base/bugfix/GSIS-1-x-base-sandbox-qa-conflict-resolved", false);
+const resolve2 = mkrepo("sis-product-workflow-engine-backend", "base/bugfix/GSIS-1-x-gcet-sandbox-qa-conflict-resolved-2", false);
+check("merge target into ticket branch", `git -C "${ticket}" merge origin/base-sandbox-qa`, "DENY");
+check("merge base-development into ticket branch", `git -C "${ticket}" merge --no-ff -m "sync" base-development`, "DENY");
+check("merge refs/remotes/origin/<target> into ticket branch", `git -C "${ticket}" merge refs/remotes/origin/gcet-sandbox-qa`, "DENY");
+check("pull target into ticket branch", `git -C "${ticket}" pull origin base-sandbox-qa`, "DENY");
+check("merge target into resolve branch", `git -C "${resolve}" merge --no-ff origin/base-sandbox-qa`, "ALLOW");
+check("merge target into resolve branch -2", `git -C "${resolve2}" merge origin/gcet-sandbox-qa`, "ALLOW");
+check("merge ticket branch into resolve branch", `git -C "${resolve}" merge base/bugfix/GSIS-1-x`, "ALLOW");
+check("merge another ticket branch into ticket branch", `git -C "${ticket}" merge origin/base/feature/GSIS-2-y`, "ALLOW");
+check("merge --abort on ticket branch", `git -C "${ticket}" merge --abort`, "ALLOW");
+check("plain pull on ticket branch", `git -C "${ticket}" pull --ff-only`, "ALLOW");
+check("plain pull on protected branch", `git -C "${product}" pull --ff-only`, "ALLOW");
+
 console.log("\nWorkspace cwd resolution still works");
 check("cd into brain then commit", `cd "${brain}" && git commit -m "GSIS-1: design"`, "ALLOW");
 check("cd into product then commit", `cd "${product}" && git commit -m x`, "DENY");
@@ -104,6 +120,8 @@ console.log("\nReads are unaffected");
 check("status in brain", `git -C "${brain}" status --porcelain`, "ALLOW");
 check("log in product", `git -C "${product}" log --oneline -5`, "ALLOW");
 check("pull in brain", `git -C "${brain}" pull --ff-only`, "ALLOW");
+check("merge-base in product", `git -C "${product}" merge-base HEAD base-sandbox-qa`, "ALLOW");
+check("merge-tree in product", `git -C "${product}" merge-tree --write-tree --name-only base-sandbox-qa HEAD`, "ALLOW");
 
 console.log("\nGitHub CLI allowlist, by name or by path");
 const GH = "C:\\Program Files\\GitHub CLI\\gh.exe";
